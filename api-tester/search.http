@@ -1,0 +1,15 @@
+@hostname = http://localhost:3000
+
+GET {{hostname}}/products
+
+### Search for a product
+
+GET {{hostname}}/products?q=mascara
+
+### Filter products by category
+
+GET {{hostname}}/products?category=beauty
+
+### Sort products by price descending as ascending is default
+
+GET {{hostname}}/products?sort=desc

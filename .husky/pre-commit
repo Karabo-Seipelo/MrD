@@ -1,0 +1,4 @@
+pnpm typecheck
+pnpm format:check
+pnpm test
+pre-commit

@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="en">
+  <body>
+    <p id="status">loading...</p>
+    <script type="module">
+      const res = await fetch("/health");
+      const data = await res.json();
+
+      document.getElementById("status").textContent = data.status;
+    </script>
+  </body>
+</html>
