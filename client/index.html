@@ -1,12 +1,24 @@
 <!doctype html>
 <html lang="en">
+  <head>
+    <title>Product Search</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Product Search" />
+    <meta name="keywords" content="Product Search" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
   <body>
-    <p id="status">loading...</p>
-    <script type="module">
-      const res = await fetch("/health");
-      const data = await res.json();
-
-      document.getElementById("status").textContent = data.status;
-    </script>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <div class="site-header__bar">
+          <a class="brand" href="/" aria-label="ACME home">
+            <span class="brand__mark">🚀</span>
+            <span class="brand__name">ACME</span>
+          </a>
+        </div>
+        <h1 class="page-title">Product Search</h1>
+      </div>
+    </header>
   </body>
 </html>
