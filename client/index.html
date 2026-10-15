@@ -42,6 +42,62 @@
           </select>
         </div>
       </div>
+      <ul class="result-list">
+        <li class="result-list__item">
+          <div class="result-list__info">
+            <h2 class="result__name">Product Name</h2>
+            <div class="result__meta">
+              <div class="result__vendor">Vendor Name</div>
+              <div class="result__eta">
+                <i class="result__eta-icon" data-feather="clock"></i>
+                <span>
+                  <span class="result__eta-label">Delivery in</span>
+                  25 - 35 min
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="result__enrich">
+            <span class="price">R89.00</span>
+            <span class="badge badge__in-stock">Available</span>
+          </div>
+        </li>
+
+        <li class="result-list__item">
+          <div class="result-list__info">
+            <h2 class="result__name">Product Name</h2>
+            <div class="result__meta">
+              <div class="result__vendor">Vendor Name</div>
+              <div class="result__eta">
+                <i class="result__eta-icon" data-feather="clock"></i>
+                <span>
+                  <span class="result__eta-label">Delivery in</span>
+                  25 - 35 min
+                </span>
+              </div>
+            </div>
+          </div>
+          <div class="result__enrich">
+            <span class="price">R89.00</span>
+            <span class="badge badge__low-stock">Only a few left</span>
+          </div>
+        </li>
+
+        <li class="result-list__item" aria-hidden="true">
+          <div class="result-list__info">
+            <div class="skeleton skeleton__name"></div>
+            <div class="result__meta">
+              <div class="skeleton skeleton__vendor"></div>
+              <div class="skeleton skeleton__eta"></div>
+            </div>
+          </div>
+          <div class="result__enrich">
+            <span class="skeleton skeleton__price"></span>
+            <span class="skeleton skeleton__badge"></span>
+          </div>
+        </li>
+
+      </ul>
     </main>
 
     <script>
