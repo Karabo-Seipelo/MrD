@@ -7,6 +7,7 @@
     <meta name="description" content="Product Search" />
     <meta name="keywords" content="Product Search" />
     <link rel="stylesheet" href="./styles.css" />
+    <script src="https://unpkg.com/feather-icons"></script>
   </head>
   <body>
     <header class="site-header">
@@ -18,7 +19,20 @@
           </a>
         </div>
         <h1 class="page-title">Product Search</h1>
+        <form class="search" role="search">
+          <label class="search__label" for="q">Search</label>
+          <div class="search__row">
+            <input class="search__input" type="search" id="q" placeholder="Search" />
+            <button class="button button--primary search__submit">
+              <i data-feather="search"></i>
+            </button>
+          </div>
+        </form>
       </div>
     </header>
+
+    <script>
+      feather.replace();
+    </script>
   </body>
 </html>
