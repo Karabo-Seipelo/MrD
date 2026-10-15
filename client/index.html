@@ -43,65 +43,137 @@
         </div>
       </div>
       <ul class="result-list">
-        <li class="result-list__item">
-          <div class="result-list__info">
-            <h2 class="result__name">Product Name</h2>
-            <div class="result__meta">
-              <div class="result__vendor">Vendor Name</div>
-              <div class="result__eta">
-                <i class="result__eta-icon" data-feather="clock"></i>
-                <span>
-                  <span class="result__eta-label">Delivery in</span>
-                  25 - 35 min
-                </span>
+        
+        <template id="badge-in-stock">
+          <span class="badge badge__in-stock">Available</span>
+        </template>
+        
+        <template id="badge-low-stock">
+          <span class="badge badge__low-stock">Only a few left</span>
+        </template>
+
+        <template id="result">
+          <li class="result-list__item">
+            <div class="result-list__info">
+              <h2 class="result__name">Product Name</h2>
+              <div class="result__meta">
+                <div class="result__vendor">Vendor Name</div>
+                <div class="result__eta">
+                  <i class="result__eta-icon" data-feather="clock"></i>
+                  <span>
+                    <span class="result__eta-label">Delivery in</span>
+                    25 - 35 min
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="result__enrich">
-            <span class="price">R89.00</span>
-            <span class="badge badge__in-stock">Available</span>
-          </div>
-        </li>
+            <div class="result__enrich">
+              <span class="price">R89.00</span>
+              <span class="badge"></span>
+            </div>
+          </li>
+        </template>
 
-        <li class="result-list__item">
-          <div class="result-list__info">
-            <h2 class="result__name">Product Name</h2>
-            <div class="result__meta">
-              <div class="result__vendor">Vendor Name</div>
-              <div class="result__eta">
-                <i class="result__eta-icon" data-feather="clock"></i>
-                <span>
-                  <span class="result__eta-label">Delivery in</span>
-                  25 - 35 min
-                </span>
+        
+
+        <template id="skeleton">
+          <li class="result-list__item" aria-hidden="true">
+            <div class="result-list__info">
+              <div class="skeleton skeleton__name"></div>
+              <div class="result__meta">
+                <div class="skeleton skeleton__vendor"></div>
+                <div class="skeleton skeleton__eta"></div>
               </div>
             </div>
-          </div>
-          <div class="result__enrich">
-            <span class="price">R89.00</span>
-            <span class="badge badge__low-stock">Only a few left</span>
-          </div>
-        </li>
-
-        <li class="result-list__item" aria-hidden="true">
-          <div class="result-list__info">
-            <div class="skeleton skeleton__name"></div>
-            <div class="result__meta">
-              <div class="skeleton skeleton__vendor"></div>
-              <div class="skeleton skeleton__eta"></div>
+            <div class="result__enrich">
+              <span class="skeleton skeleton__price"></span>
+              <span class="skeleton skeleton__badge"></span>
             </div>
-          </div>
-          <div class="result__enrich">
-            <span class="skeleton skeleton__price"></span>
-            <span class="skeleton skeleton__badge"></span>
-          </div>
-        </li>
-
+          </li>
+        </template>
+        
       </ul>
     </main>
 
     <script>
       feather.replace();
+    </script>
+    <script type="module">
+      const summary = document.querySelector('.results__summary');
+      const list = document.querySelector(".result-list");
+      const skeleton = document.querySelector("#skeleton");
+      const result = document.querySelector("#result");
+      const form = document.querySelector(".search");
+      const query = document.querySelector("#q");
+      const badgeInStock = document.querySelector("#badge-in-stock");
+      const badgeLowStock = document.querySelector("#badge-low-stock");
+      const sort = document.querySelector("#sort");
+
+      const money = new Intl.NumberFormat("en-ZA", {
+        style: "currency",
+        currency: "ZAR",
+      })
+
+      function show(state, data) {
+        summary.textContext = "Loading...";
+
+        if (state === "loading") {
+          list.setAttribute("aria-busy", "true");
+          list.replaceChildren(...Array.from({length: 5}, () => skeleton.content.cloneNode(true)));
+          return;
+        }
+
+        if (state === "error") {
+          summary.textContent = data.error;
+          list.replaceChildren();
+          return;
+        }
+
+        summary.textContent = `${data.total} results`;
+
+        list.replaceChildren(...data.products.map(card));
+      }
+    
+      function card(product) {
+        const node = result.content.cloneNode(true);
+
+        node.querySelector(".result__name").textContent = product.title;
+        node.querySelector(".result__vendor").textContent = product.brand ?? "";
+        node.querySelector(".result__eta").textContent = product.shippingInformation;
+        node.querySelector(".price").textContent = money.format(product.price);
+
+        if (product.availabilityStatus.toLowerCase() === "in stock") {
+          node.querySelector(".badge").replaceChildren(badgeInStock.content.cloneNode(true));
+        } else {
+          node.querySelector(".badge").replaceChildren(badgeLowStock.content.cloneNode(true));
+        }
+        return node;
+      }
+
+      async function search(q = "", order = "asc") {
+        const params = new URLSearchParams({q, sort: order});
+        show("loading");
+
+        try {
+          const response = await fetch(`/products?${params}`);
+          const data = await response.json();
+          show(response.ok ? "results" : "error", data);
+        } catch {
+          show("error", { error: "Failed to load products."})
+        }
+      }
+    
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        search(query.value, sort.value);
+      });
+
+      sort.addEventListener("change", (event) => {
+        search(query.value, event.target.value);
+      });
+
+      search("", "asc");
+
     </script>
   </body>
 </html>
