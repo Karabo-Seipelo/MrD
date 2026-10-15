@@ -115,9 +115,10 @@
       })
 
       function show(state, data) {
-        summary.textContext = "Loading...";
+        
 
         if (state === "loading") {
+          summary.textContent = "Loading...";
           list.setAttribute("aria-busy", "true");
           list.replaceChildren(...Array.from({length: 5}, () => skeleton.content.cloneNode(true)));
           return;
