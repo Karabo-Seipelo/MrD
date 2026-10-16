@@ -22,7 +22,7 @@ function wait(ms: number) {
 }
 
 export async function fetchCatalog() {
-  const latency = 1500 + Math.random() * 700;
+  const latency = 1000 + Math.random() * 700;
   await wait(latency);
 
   fetches += 1;
