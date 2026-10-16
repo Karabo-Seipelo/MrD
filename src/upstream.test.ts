@@ -10,32 +10,19 @@ describe("fetchCatalog", () => {
     vi.restoreAllMocks();
   });
 
-  it("returns the local catalog after the delay", async () => {
-    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(0.9);
-
-    let settled = false;
-    const pending = fetchCatalog().then((catalog) => {
-      settled = true;
-      return catalog;
-    });
-
-    await vi.advanceTimersByTimeAsync(99);
-    expect(settled).toBe(false);
-
-    await vi.advanceTimersByTimeAsync(1);
-    const catalog = await pending;
-
-    expect(catalog.products).toHaveLength(40);
-    expect(catalog.products[0].title).toBe("Essence Mascara Lash Princess");
-  });
-
-  it("fails when the upstream catalog error triggers", async () => {
-    vi.spyOn(Math, "random").mockReturnValueOnce(0).mockReturnValueOnce(0.1);
-
-    const pending = fetchCatalog();
-    const failed = expect(pending).rejects.toThrow("upstream catalog failed");
-
-    await vi.advanceTimersByTimeAsync(100);
-    await failed;
+  it("fails on every 10th fetch and then succeeds again", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    for (let n = 1; n < 10; n++) {
+      const pending = fetchCatalog();
+      await vi.advanceTimersByTimeAsync(1500);
+      await expect(pending).resolves.toHaveProperty("products");
+    }
+    const failed = fetchCatalog();
+    const rejection = expect(failed).rejects.toThrow("upstream catalog failed");
+    await vi.advanceTimersByTimeAsync(1500);
+    await rejection;
+    const again = fetchCatalog();
+    await vi.advanceTimersByTimeAsync(1500);
+    await expect(again).resolves.toHaveProperty("products");
   });
 });

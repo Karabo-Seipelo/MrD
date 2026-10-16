@@ -170,9 +170,12 @@
       const chipsClear = document.querySelector(".chips__clear");
       const searchError = document.querySelector("#search-error");
       const status = document.querySelector(".results__status");
-      const money = new Intl.NumberFormat("en-ZA", {
+      const money = new Intl.NumberFormat("en-US", {
         style: "currency",
         currency: "ZAR",
+        currencyDisplay: "narrowSymbol",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
       });
       const suggestList = document.querySelector("#suggest-list");
       const searchField = document.querySelector(".search__field");
@@ -191,6 +194,14 @@
         if (searchCache.size > SEARCH_CACHE_MAX) {
           searchCache.delete(searchCache.keys().next().value);
         }
+      }
+
+      function formatCurrency(value) {
+        return money
+          .formatToParts(value)
+          .filter((part) => part.type !== "literal")
+          .map((part) => part.value)
+          .join("");
       }
 
       function show(state, data) {
@@ -225,7 +236,7 @@
 
         node.querySelector(".result__name").textContent = product.title;
         node.querySelector(".result__vendor").textContent = product.brand ?? "";
-        node.querySelector(".price").textContent = money.format(product.price);
+        node.querySelector(".price").textContent = formatCurrency(product.price);
 
         if (status === "in stock") {
           badge.className = "badge badge__in-stock";

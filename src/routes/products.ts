@@ -7,7 +7,7 @@ export const productsRouter = Router();
 let searchCount = 0;
 
 productsRouter.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
 productsRouter.get("/products", async (req, res) => {

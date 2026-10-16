@@ -4,6 +4,7 @@ import { fileURLToPath } from "url";
 import { type Product } from "./search.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+let fetches = 0;
 
 export const catalog = JSON.parse(
   await readFile(path.join(__dirname, "../data/catalog.json"), "utf-8"),
@@ -21,10 +22,11 @@ function wait(ms: number) {
 }
 
 export async function fetchCatalog() {
-  const latency = 100 + Math.random() * 700;
+  const latency = 1500 + Math.random() * 700;
   await wait(latency);
 
-  if (Math.random() < 0.2) {
+  fetches += 1;
+  if (fetches % 10 === 0) {
     throw new Error("upstream catalog failed");
   }
 
