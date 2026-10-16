@@ -243,6 +243,10 @@
         search();
       })
       
+      window.addEventListener("online", () => {
+        if (status.querySelector(".search-error")) search();
+      });
+      
       loadCategories();
 
     </script>
