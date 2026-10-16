@@ -20,12 +20,33 @@
         </div>
         <h1 class="page-title">Product Search</h1>
         <form class="search" role="search">
-          <label class="search__label" for="q">Search</label>
-          <div class="search__row">
-            <input class="search__input" type="search" id="q" placeholder="Search" />
-            <button class="button button--primary search__submit">
-              <i data-feather="search"></i>
-            </button>
+          <div class="search__query">
+            <label class="search__label" for="q">Search the catalogue</label> 
+            <div class="search__row">
+              <input id="q" name="q" class="search__input" type="search" placeholder="Try 'burger' or 'milk'" />
+              <button class="button button--primary search__submit">
+                <i data-feather="search"></i>
+              </button>
+            </div>
+          </div>
+          <div class="search__tools">
+            <div class="search__refine">
+              <fieldset class="chips">
+                <legend class="u-sr">Category</legend>
+                <div class="chips__track">
+                  <button type="button" class="chips__clear button--clear">Clear</button>
+                </div>
+              </fieldset>
+            </div>
+            <div class="sort">
+              <label class="sort__label" for="sort">Sort</label>
+              <div class="sort__control">
+                <select class="sort__select" id="sort" name="sort">
+                  <option value="asc">Price: low to high</option>
+                  <option value="desc">Price: high to low</option>
+                </select>
+              </div>
+            </div>
           </div>
         </form>
       </div>
@@ -33,15 +54,9 @@
 
     <main class="results">
       <div class="results__toolbar">
-        <p class="results__summary">5 results</p>
-        <div class="sort">
-          <label class="sort__label" for="sort">Sort</label>
-          <select class="sort__select" id="sort">
-            <option value="asc">Ascending</option>
-            <option value="desc">Descending</option>
-          </select>
-        </div>
+        <p class="results__summary"></p>
       </div>
+      
       <ul class="result-list">
         
         <template id="badge-in-stock">
@@ -95,7 +110,7 @@
       </ul>
     </main>
 
-    <script>
+    <script type="module">
       feather.replace();
     </script>
     <script type="module">
@@ -108,7 +123,9 @@
       const badgeInStock = document.querySelector("#badge-in-stock");
       const badgeLowStock = document.querySelector("#badge-low-stock");
       const sort = document.querySelector("#sort");
-
+      const chips = document.querySelector(".chips");
+      const track = document.querySelector(".chips__track");
+      const chipsClear = document.querySelector(".chips__clear");
       const money = new Intl.NumberFormat("en-ZA", {
         style: "currency",
         currency: "ZAR",
@@ -151,8 +168,36 @@
         return node;
       }
 
-      async function search(q = "", order = "asc") {
-        const params = new URLSearchParams({q, sort: order});
+      function chip(name) {
+        const label = document.createElement("label");
+        label.className = "chip";
+        label.innerHTML =
+          '<input class="chip__input" type="radio" name="category"><span class="chip__label"></span>';
+        label.querySelector("input").value = name;
+        label.querySelector(".chip__label").textContent =
+          name.charAt(0).toUpperCase() + name.slice(1);
+        return label;
+      }
+
+      function selectedCategory() {
+        const selected = chips.querySelector('input[name="category"]:checked');
+        return selected ? selected.value : "";
+      }
+      
+      async function loadCategories() {
+        const response = await fetch("/products/categories");
+        const data = await response.json();
+        const clear = track.querySelector(".chips__clear");
+        for (const name of data.categories) {
+          track.insertBefore(chip(name), clear);
+        }
+      }
+      
+      async function search() {
+        const params = new URLSearchParams({
+          q: query.value, 
+          sort: sort.value, 
+          category: selectedCategory()});
         show("loading");
 
         try {
@@ -166,14 +211,22 @@
     
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        search(query.value, sort.value);
+        search();
       });
 
-      sort.addEventListener("change", (event) => {
-        search(query.value, event.target.value);
-      });
+      sort.addEventListener("change", search);
 
-      search("", "asc");
+      chips.addEventListener("change", search)
+
+      chipsClear.addEventListener("click", (event) => {
+        event.preventDefault();
+        const selected = chips.querySelector('input[name="category"]:checked');
+        if (selected) selected.checked = false;
+        search();
+      })
+
+      search();
+      loadCategories();
 
     </script>
   </body>
