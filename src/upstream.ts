@@ -10,7 +10,9 @@ export const catalog = JSON.parse(
 );
 
 export function listCategories(): string[] {
-  const names: string[] = catalog.products.map((product: Product) => product.category);
+  const names: string[] = catalog.products.map(
+    (product: Product) => product.category,
+  );
   return [...new Set(names)].sort();
 }
 

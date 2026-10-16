@@ -69,21 +69,22 @@ describe("Products router", () => {
 
   it("returns the catalog categories", async () => {
     vi.mocked(listCategories).mockResolvedValue(["beauty", "groceries"]);
-      const response = await request(app).get("/products/categories");
-      expect(response.status).toBe(200);
-      expect(response.body.categories).toEqual(["beauty", "groceries"])
+    const response = await request(app).get("/products/categories");
+    expect(response.status).toBe(200);
+    expect(response.body.categories).toEqual(["beauty", "groceries"]);
   });
 
   it("returns title suggestions without calling upstream", async () => {
     vi.mocked(fetchCatalog).mockClear();
     const response = await request(app).get("/products/suggest").query({
       q: "mas",
-      limit: 5
+      limit: 5,
     });
-  
-    expect(response.status).toBe(200);
-    expect(response.body.suggestions).toContain("Essence Mascara Lash Princess");
-    expect(fetchCatalog).not.toHaveBeenCalled();
-  })
-});
 
+    expect(response.status).toBe(200);
+    expect(response.body.suggestions).toContain(
+      "Essence Mascara Lash Princess",
+    );
+    expect(fetchCatalog).not.toHaveBeenCalled();
+  });
+});

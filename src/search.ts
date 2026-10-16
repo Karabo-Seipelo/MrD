@@ -43,12 +43,11 @@ export function queryProducts(
   return [...filtered].sort((a, b) => (a.price - b.price) * direction);
 }
 
-
 export function suggestProducts(
   products: Product[],
   query: string,
-  limit = 8
-): string [] {
+  limit = 8,
+): string[] {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
 
@@ -61,7 +60,9 @@ export function suggestProducts(
       product.description,
       product.category,
       product.brand ?? "",
-    ].join(" ").toLowerCase();
+    ]
+      .join(" ")
+      .toLowerCase();
 
     if (!text.includes(q)) continue;
     if (seen.has(product.title)) continue;

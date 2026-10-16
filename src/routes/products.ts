@@ -4,11 +4,17 @@ import { queryProducts, suggestProducts, type Product } from "../search.js";
 
 export const productsRouter = Router();
 
+let searchCount = 0;
+
 productsRouter.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
 productsRouter.get("/products", async (req, res) => {
+  const started = performance.now();
+  const request = ++searchCount;
+  let status = 503;
+
   try {
     const catalog = await fetchCatalog();
     const q = String(req.query.q ?? "");
@@ -26,10 +32,16 @@ productsRouter.get("/products", async (req, res) => {
       total: products.length,
       query: q,
     });
+    status = 200;
   } catch {
     res.status(503).json({
       error: "upstream catalog failed",
     });
+  } finally {
+    const ms = Math.round(performance.now() - started);
+    console.log(
+      `search #${request} ${status} ${ms}ms q=${JSON.stringify(String(req.query.q ?? ""))}`,
+    );
   }
 });
 
@@ -41,10 +53,6 @@ productsRouter.get("/products/categories", async (_req, res) => {
 productsRouter.get("/products/suggest", async (req, res) => {
   const q = String(req.query.q ?? "");
   const limit = Math.min(Number(req.query.limit) || 8, 20);
-  const suggestions = suggestProducts(
-    catalog.products as Product[],
-    q,
-    limit,
-  );
-  res.json({ suggestions})
+  const suggestions = suggestProducts(catalog.products as Product[], q, limit);
+  res.json({ suggestions });
 });

@@ -21,22 +21,31 @@
         <h1 class="page-title">Product Search</h1>
         <form class="search" role="search">
           <div class="search__query">
-            <label class="search__label" for="q">Search the catalogue</label> 
+            <label class="search__label" for="q">Search the catalogue</label>
             <div class="search__row">
               <div class="search__field">
-                <input 
-                  id="q" 
-                  name="q" 
-                  class="search__input" 
-                  type="search" 
-                  placeholder="Try 'apple' or 'ice cream'" 
+                <input
+                  id="q"
+                  name="q"
+                  class="search__input"
+                  type="search"
+                  placeholder="Try 'apple' or 'ice cream'"
                   autocomplete="off"
                   aria-autocomplete="list"
                   aria-controls="suggest-list"
-                  aria-expanded="false" />
-                <ul id="suggest-list" class="suggest" role="listbox" hidden></ul>
+                  aria-expanded="false"
+                />
+                <ul
+                  id="suggest-list"
+                  class="suggest"
+                  role="listbox"
+                  hidden
+                ></ul>
               </div>
-              <button class="button button--primary search__submit" aria-label="Search">
+              <button
+                class="button button--primary search__submit"
+                aria-label="Search"
+              >
                 <i data-feather="search"></i>
               </button>
             </div>
@@ -46,7 +55,9 @@
               <fieldset class="chips">
                 <legend class="u-sr">Category</legend>
                 <div class="chips__track">
-                  <button type="button" class="chips__clear button--clear">Clear</button>
+                  <button type="button" class="chips__clear button--clear">
+                    Clear
+                  </button>
                 </div>
               </fieldset>
             </div>
@@ -71,10 +82,16 @@
 
       <template id="search-error">
         <section class="search-error" aria-labelledby="search-error-title">
-          <h2 class="search-error__title" id="search-error-title">Search isn't working right now</h2>
-          <p class="search-error__body">Your search and filters are saved. Try again in a moment.</p>
+          <h2 class="search-error__title" id="search-error-title">
+            Search isn't working right now
+          </h2>
+          <p class="search-error__body">
+            Your search and filters are saved. Try again in a moment.
+          </p>
           <div class="search-error__actions">
-            <button class="button button--primary" type="button">Try again</button>
+            <button class="button button--primary" type="button">
+              Try again
+            </button>
           </div>
         </section>
       </template>
@@ -116,7 +133,7 @@
     </script>
     <script type="module">
       let current = null;
-      const summary = document.querySelector('.results__summary');
+      const summary = document.querySelector(".results__summary");
       const list = document.querySelector(".result-list");
       const skeleton = document.querySelector("#skeleton");
       const result = document.querySelector("#result");
@@ -140,15 +157,27 @@
       const suggestCache = new Map();
       const SUGGEST_DELAY_MS = 280;
       const SUGGEST_MIN = 2;
+      const searchCache = new Map();
+      const SEARCH_CACHE_MAX = 20;
+
+      function rememberSearch(key, data) {
+        searchCache.delete(key);
+        searchCache.set(key, data);
+        if (searchCache.size > SEARCH_CACHE_MAX) {
+          searchCache.delete(searchCache.keys().next().value);
+        }
+      }
 
       function show(state, data) {
-        
-
         if (state === "loading") {
           status.replaceChildren();
           summary.textContent = "Loading...";
           list.setAttribute("aria-busy", "true");
-          list.replaceChildren(...Array.from({length: 5}, () => skeleton.content.cloneNode(true)));
+          list.replaceChildren(
+            ...Array.from({ length: 5 }, () =>
+              skeleton.content.cloneNode(true),
+            ),
+          );
           return;
         }
 
@@ -168,7 +197,7 @@
         list.replaceChildren(...data.products.map(card));
         feather.replace({ width: 20, height: 20 });
       }
-    
+
       function card(product) {
         const node = result.content.cloneNode(true);
         const badge = node.querySelector(".badge");
@@ -181,13 +210,14 @@
         if (status === "in stock") {
           badge.className = "badge badge__in-stock";
           badge.textContent = "Available";
-          node.querySelector(".result__eta-text").textContent = product.shippingInformation;
+          node.querySelector(".result__eta-text").textContent =
+            product.shippingInformation;
         } else if (status === "low stock") {
           badge.className = "badge badge__low-stock";
           badge.textContent = "Only a few left";
           node.querySelector(".result__eta").remove();
         }
-        
+
         return node;
       }
 
@@ -217,7 +247,9 @@
       function categoryForRequest() {
         const selected = selectedCategory();
         if (selected) return selected;
-        return (new URLSearchParams(location.search).get("category") ?? "").trim();
+        return (
+          new URLSearchParams(location.search).get("category") ?? ""
+        ).trim();
       }
 
       function hideSuggestions() {
@@ -249,7 +281,7 @@
         query.setAttribute("aria-expanded", "true");
       }
 
-      async function updateSuggestions () {
+      async function updateSuggestions() {
         const q = query.value.trim();
         if (q.length < SUGGEST_MIN) {
           hideSuggestions();
@@ -271,9 +303,9 @@
         suggestAbort = new AbortController();
 
         try {
-          const params = new URLSearchParams({q, limit: "8"});
+          const params = new URLSearchParams({ q, limit: "8" });
           const response = await fetch(`/products/suggest?${params}`, {
-            signal: suggestAbort.signal
+            signal: suggestAbort.signal,
           });
 
           if (!response.ok) {
@@ -292,9 +324,8 @@
           if (error.name === "AbortError") return;
           hideSuggestions();
         }
-
       }
-      
+
       async function loadCategories() {
         const response = await fetch("/products/categories");
         const data = await response.json();
@@ -303,7 +334,7 @@
           track.insertBefore(chip(name), clear);
         }
       }
-      
+
       async function search({ record = true } = {}) {
         hideSuggestions();
         if (record) writeUrl();
@@ -311,9 +342,21 @@
         current = new AbortController();
 
         const params = new URLSearchParams({
-          q: query.value, 
-          sort: sort.value, 
-          category: categoryForRequest()});
+          q: query.value,
+          sort: sort.value,
+          category: categoryForRequest(),
+        });
+        const key = params.toString();
+        const cached = searchCache.get(key);
+
+        if (cached) {
+          show("results", cached);
+          console.log(`search cache hit`, key);
+          return;
+        }
+
+        const started = performance.now();
+
         show("loading");
 
         try {
@@ -322,13 +365,18 @@
           });
           const data = await response.json();
           show(response.ok ? "results" : "error", data);
+          if (response.ok) rememberSearch(key, data);
+          const ms = Math.round(performance.now() - started);
+          console.log(`search ${response.status} ${ms}ms`, params.toString());
         } catch (error) {
           if (error.name === "AbortError") return;
-          show("error", { error: "Failed to load products."})
+          show("error", { error: "Failed to load products." });
+          console.log(
+            `search failed ${Math.round(performance.now() - started)}ms`,
+          );
         }
       }
- 
-      
+
       form.addEventListener("submit", (event) => {
         event.preventDefault();
         search();
@@ -346,18 +394,18 @@
       document.addEventListener("click", (event) => {
         if (!searchField.contains(event.target)) hideSuggestions();
       });
-      
+
       sort.addEventListener("change", search);
 
-      chips.addEventListener("change", search)
+      chips.addEventListener("change", search);
 
       chipsClear.addEventListener("click", (event) => {
         event.preventDefault();
         const selected = chips.querySelector('input[name="category"]:checked');
         if (selected) selected.checked = false;
         search();
-      })
-      
+      });
+
       window.addEventListener("online", () => {
         if (status.querySelector(".search-error")) search();
       });
@@ -406,20 +454,19 @@
         sort.value = params.get("sort") === "desc" ? "desc" : "asc";
 
         for (const input of chips.querySelectorAll("input[name='category']")) {
-          input.checked = category !== "" && input.value.toLowerCase() === category;
+          input.checked =
+            category !== "" && input.value.toLowerCase() === category;
         }
       }
 
-      
       applyFromLocation();
       try {
         await loadCategories();
       } catch {
-        // The text and sort are already applied. The request still sends the URL category.
+        console.error("Failed to load categories");
       }
       applyFromLocation();
       if (location.search) search({ record: false });
-
     </script>
   </body>
 </html>
