@@ -213,7 +213,7 @@ h1 {
 }
 
 .suggest__item:hover, .suggest__item:focus-visible {
-  background: var(--color-bg)
+  background: var(--color-bg);
 }
 
 .sort {

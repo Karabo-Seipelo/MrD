@@ -214,6 +214,12 @@
         return selected ? selected.value : "";
       }
 
+      function categoryForRequest() {
+        const selected = selectedCategory();
+        if (selected) return selected;
+        return (new URLSearchParams(location.search).get("category") ?? "").trim();
+      }
+
       function hideSuggestions() {
         suggestList.hidden = true;
         suggestList.replaceChildren();
@@ -298,15 +304,16 @@
         }
       }
       
-      async function search() {
+      async function search({ record = true } = {}) {
         hideSuggestions();
+        if (record) writeUrl();
         current?.abort();
         current = new AbortController();
 
         const params = new URLSearchParams({
           q: query.value, 
           sort: sort.value, 
-          category: selectedCategory()});
+          category: categoryForRequest()});
         show("loading");
 
         try {
@@ -320,9 +327,7 @@
           show("error", { error: "Failed to load products."})
         }
       }
-    
-
-      form.addEventListener("submit", () => hideSuggestions());
+ 
       
       form.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -356,8 +361,64 @@
       window.addEventListener("online", () => {
         if (status.querySelector(".search-error")) search();
       });
+
+      function showEmpty() {
+        current?.abort();
+        hideSuggestions();
+        status.replaceChildren();
+        summary.textContent = "";
+        list.replaceChildren();
+        list.removeAttribute("aria-busy");
+      }
+
+      window.addEventListener("popstate", (event) => {
+        applyFromLocation();
+        if (location.search || event.state?.searched) {
+          search({ record: false });
+        } else {
+          showEmpty();
+        }
+      });
+
+      function writeUrl() {
+        const params = new URLSearchParams();
+        const text = query.value.trim();
+        const category = selectedCategory();
+        if (text) params.set("q", text);
+        if (category) params.set("category", category);
+        if (sort.value === "desc") params.set("sort", "desc");
+
+        const next = params.toString();
+        const url = next ? `${location.pathname}?${next}` : location.pathname;
+        const state = { searched: true };
+        if (url === location.pathname + location.search) {
+          if (!history.state?.searched) history.replaceState(state, "", url);
+          return;
+        }
+        history.pushState(state, "", url);
+      }
+
+      function applyFromLocation() {
+        const params = new URLSearchParams(location.search);
+        const category = (params.get("category") ?? "").trim().toLowerCase();
+
+        query.value = params.get("q") ?? "";
+        sort.value = params.get("sort") === "desc" ? "desc" : "asc";
+
+        for (const input of chips.querySelectorAll("input[name='category']")) {
+          input.checked = category !== "" && input.value.toLowerCase() === category;
+        }
+      }
+
       
-      loadCategories();
+      applyFromLocation();
+      try {
+        await loadCategories();
+      } catch {
+        // The text and sort are already applied. The request still sends the URL category.
+      }
+      applyFromLocation();
+      if (location.search) search({ record: false });
 
     </script>
   </body>
