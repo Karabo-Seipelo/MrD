@@ -1,10 +1,11 @@
 import express from "express";
 import request from "supertest";
 import { productsRouter } from "./products.js";
-import { fetchCatalog } from "../upstream.js";
+import { fetchCatalog, listCategories } from "../upstream.js";
 
 vi.mock("../upstream.js", () => ({
   fetchCatalog: vi.fn(),
+  listCategories: vi.fn()
 }));
 
 const app = express();
@@ -60,5 +61,12 @@ describe("Products router", () => {
     expect(response.body).toEqual({
       error: "upstream catalog failed",
     });
+  });
+
+  it("returns the catalog categories", async () => {
+    vi.mocked(listCategories).mockResolvedValue(["beauty", "groceries"]);
+      const response = await request(app).get("/products/categories");
+      expect(response.status).toBe(200);
+      expect(response.body.categories).toEqual(["beauty", "groceries"])
   });
 });

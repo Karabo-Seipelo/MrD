@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fetchCatalog } from "../upstream.js";
+import { fetchCatalog, listCategories } from "../upstream.js";
 import { queryProducts, type Product } from "../search.js";
 
 export const productsRouter = Router();
@@ -31,4 +31,9 @@ productsRouter.get("/products", async (req, res) => {
       error: "upstream catalog failed",
     });
   }
+});
+
+productsRouter.get("/products/categories", async (_req, res) => {
+  const categories = await listCategories();
+  res.json({ categories });
 });
