@@ -69,38 +69,28 @@
 
       <template id="result">
         <li class="result-list__item">
-          <div class="result-list__info">
-            <h2 class="result__name">Product Name</h2>
-            <div class="result__meta">
-              <div class="result__vendor">Vendor Name</div>
-              <div class="result__eta">
-                <i class="result__eta-icon" data-feather="clock"></i>
-                <span class="result__eta-text">
-                  25 - 35 min
-                </span>
-              </div>
+          <h2 class="result__name">Product Name</h2>
+          <span class="price">R89.00</span>
+          <div class="result__meta">
+            <div class="result__vendor">Vendor Name</div>
+            <div class="result__eta">
+              <i class="result__eta-icon" data-feather="clock"></i>
+              <span class="result__eta-text">25 - 35 min</span>
             </div>
           </div>
-          <div class="result__enrich">
-            <span class="price">R89.00</span>
-            <span class="badge"></span>
-          </div>
+          <span class="badge"></span>
         </li>
       </template>
 
       <template id="skeleton">
         <li class="result-list__item" aria-hidden="true">
-          <div class="result-list__info">
-            <div class="skeleton skeleton__name"></div>
-            <div class="result__meta">
-              <div class="skeleton skeleton__vendor"></div>
-              <div class="skeleton skeleton__eta"></div>
-            </div>
+          <div class="skeleton skeleton__name"></div>
+          <span class="skeleton skeleton__price"></span>
+          <div class="result__meta">
+            <div class="skeleton skeleton__vendor"></div>
+            <div class="skeleton skeleton__eta"></div>
           </div>
-          <div class="result__enrich">
-            <span class="skeleton skeleton__price"></span>
-            <span class="skeleton skeleton__badge"></span>
-          </div>
+          <span class="skeleton skeleton__badge"></span>
         </li>
       </template>
 
@@ -166,15 +156,16 @@
 
         node.querySelector(".result__name").textContent = product.title;
         node.querySelector(".result__vendor").textContent = product.brand ?? "";
-        node.querySelector(".result__eta-text").textContent = product.shippingInformation;
         node.querySelector(".price").textContent = money.format(product.price);
 
         if (status === "in stock") {
           badge.className = "badge badge__in-stock";
           badge.textContent = "Available";
+          node.querySelector(".result__eta-text").textContent = product.shippingInformation;
         } else if (status === "low stock") {
           badge.className = "badge badge__low-stock";
           badge.textContent = "Only a few left";
+          node.querySelector(".result__eta").remove();
         }
         
         return node;
