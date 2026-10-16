@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Product Search" />
     <meta name="keywords" content="Product Search" />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v5" />
     <script src="https://unpkg.com/feather-icons"></script>
   </head>
   <body>
@@ -23,7 +23,7 @@
           <div class="search__query">
             <label class="search__label" for="q">Search the catalogue</label> 
             <div class="search__row">
-              <input id="q" name="q" class="search__input" type="search" placeholder="Try 'burger' or 'milk'" />
+              <input id="q" name="q" class="search__input" type="search" placeholder="Try 'apple' or 'ice cream'" />
               <button class="button button--primary search__submit" aria-label="Search">
                 <i data-feather="search"></i>
               </button>
@@ -100,7 +100,7 @@
     </main>
 
     <script type="module">
-      feather.replace();
+      feather.replace({ width: 20, height: 20 });
     </script>
     <script type="module">
       let current = null;
@@ -146,7 +146,7 @@
         status.replaceChildren();
         summary.textContent = `${data.total} results`;
         list.replaceChildren(...data.products.map(card));
-        feather.replace();
+        feather.replace({ width: 20, height: 20 });
       }
     
       function card(product) {
@@ -174,11 +174,18 @@
       function chip(name) {
         const label = document.createElement("label");
         label.className = "chip";
-        label.innerHTML =
-          '<input class="chip__input" type="radio" name="category"><span class="chip__label"></span>';
-        label.querySelector("input").value = name;
-        label.querySelector(".chip__label").textContent =
-          name.charAt(0).toUpperCase() + name.slice(1);
+
+        const input = document.createElement("input");
+        input.className = "chip__input";
+        input.type = "radio";
+        input.name = "category";
+        input.value = name;
+
+        const text = document.createElement("span");
+        text.className = "chip__label";
+        text.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+
+        label.append(input, text);
         return label;
       }
 
