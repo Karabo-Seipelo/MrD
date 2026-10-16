@@ -13,3 +13,7 @@ GET {{hostname}}/products?category=beauty
 ### Sort products by price descending as ascending is default
 
 GET {{hostname}}/products?sort=desc
+
+### Get suggestions for a product
+
+GET http://localhost:3000/products/suggest?q=mas&limit=8
