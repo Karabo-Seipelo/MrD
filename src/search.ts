@@ -42,3 +42,33 @@ export function queryProducts(
 
   return [...filtered].sort((a, b) => (a.price - b.price) * direction);
 }
+
+
+export function suggestProducts(
+  products: Product[],
+  query: string,
+  limit = 8
+): string [] {
+  const q = query.trim().toLowerCase();
+  if (q.length < 2) return [];
+
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const product of products) {
+    const text = [
+      product.title,
+      product.description,
+      product.category,
+      product.brand ?? "",
+    ].join(" ").toLowerCase();
+
+    if (!text.includes(q)) continue;
+    if (seen.has(product.title)) continue;
+    seen.add(product.title);
+    out.push(product.title);
+    if (out.length >= limit) break;
+  }
+
+  return out;
+}

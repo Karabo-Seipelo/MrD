@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { fetchCatalog, listCategories } from "../upstream.js";
-import { queryProducts, type Product } from "../search.js";
+import { fetchCatalog, listCategories, catalog } from "../upstream.js";
+import { queryProducts, suggestProducts, type Product } from "../search.js";
 
 export const productsRouter = Router();
 
@@ -36,4 +36,15 @@ productsRouter.get("/products", async (req, res) => {
 productsRouter.get("/products/categories", async (_req, res) => {
   const categories = await listCategories();
   res.json({ categories });
+});
+
+productsRouter.get("/products/suggest", async (req, res) => {
+  const q = String(req.query.q ?? "");
+  const limit = Math.min(Number(req.query.limit) || 8, 20);
+  const suggestions = suggestProducts(
+    catalog.products as Product[],
+    q,
+    limit,
+  );
+  res.json({ suggestions})
 });

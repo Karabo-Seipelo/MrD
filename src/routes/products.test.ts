@@ -3,10 +3,14 @@ import request from "supertest";
 import { productsRouter } from "./products.js";
 import { fetchCatalog, listCategories } from "../upstream.js";
 
-vi.mock("../upstream.js", () => ({
-  fetchCatalog: vi.fn(),
-  listCategories: vi.fn()
-}));
+vi.mock("../upstream.js", async (importOriginal) => {
+  const upstream = await importOriginal<typeof import("../upstream.js")>();
+  return {
+    ...upstream,
+    fetchCatalog: vi.fn(),
+    listCategories: vi.fn(),
+  };
+});
 
 const app = express();
 app.use(productsRouter);
@@ -69,4 +73,17 @@ describe("Products router", () => {
       expect(response.status).toBe(200);
       expect(response.body.categories).toEqual(["beauty", "groceries"])
   });
+
+  it("returns title suggestions without calling upstream", async () => {
+    vi.mocked(fetchCatalog).mockClear();
+    const response = await request(app).get("/products/suggest").query({
+      q: "mas",
+      limit: 5
+    });
+  
+    expect(response.status).toBe(200);
+    expect(response.body.suggestions).toContain("Essence Mascara Lash Princess");
+    expect(fetchCatalog).not.toHaveBeenCalled();
+  })
 });
+
