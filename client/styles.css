@@ -1,5 +1,6 @@
 :root {
   --font-sans: sans-serif;
+  --text-xxs: 0.625rem;
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
   --text-md: 1rem;
@@ -283,6 +284,12 @@ h1 {
   border-radius: var(--radius-lg);
 }
 
+.result-list__error {
+  align-items: center;
+  min-height: 0;
+  color: var(--color-ink);
+}
+
 .result-list__info, .result__enrich {
   min-width: 0;
   display: flex;
@@ -317,10 +324,6 @@ h1 {
   white-space: nowrap;
 }
 
-.result__eta-icon {
-  display: none;
-}
-
 .result__enrich {
   align-items: flex-end;
   justify-content: flex-end;
@@ -336,7 +339,7 @@ h1 {
 
 .badge {
   display: inline-block;
-  padding: 0 0.725rem; /*0.1875rem 0.5rem; */
+  padding: 0 0.725rem;
   font-size: var(--text-xs);
   font-weight: var(--weight-semibold);
   border-radius: 999px;
@@ -350,6 +353,7 @@ h1 {
 .badge__low-stock {
   background: var(--color-low-bg);
   color: var(--color-low-fg); 
+  font-size: var(--text-xxs);
 }
 
 @keyframes skeleton-shimmer {

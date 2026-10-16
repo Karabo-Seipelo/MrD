@@ -24,7 +24,7 @@
             <label class="search__label" for="q">Search the catalogue</label> 
             <div class="search__row">
               <input id="q" name="q" class="search__input" type="search" placeholder="Try 'burger' or 'milk'" />
-              <button class="button button--primary search__submit">
+              <button class="button button--primary search__submit" aria-label="Search">
                 <i data-feather="search"></i>
               </button>
             </div>
@@ -67,14 +67,6 @@
         </section>
       </template>
 
-      <template id="badge-in-stock">
-        <span class="badge badge__in-stock">Available</span>
-      </template>
-      
-      <template id="badge-low-stock">
-        <span class="badge badge__low-stock">Only a few left</span>
-      </template>
-
       <template id="result">
         <li class="result-list__item">
           <div class="result-list__info">
@@ -83,8 +75,7 @@
               <div class="result__vendor">Vendor Name</div>
               <div class="result__eta">
                 <i class="result__eta-icon" data-feather="clock"></i>
-                <span>
-                  <span class="result__eta-label">Delivery in</span>
+                <span class="result__eta-text">
                   25 - 35 min
                 </span>
               </div>
@@ -129,8 +120,6 @@
       const result = document.querySelector("#result");
       const form = document.querySelector(".search");
       const query = document.querySelector("#q");
-      const badgeInStock = document.querySelector("#badge-in-stock");
-      const badgeLowStock = document.querySelector("#badge-low-stock");
       const sort = document.querySelector("#sort");
       const chips = document.querySelector(".chips");
       const track = document.querySelector(".chips__track");
@@ -167,21 +156,27 @@
         status.replaceChildren();
         summary.textContent = `${data.total} results`;
         list.replaceChildren(...data.products.map(card));
+        feather.replace();
       }
     
       function card(product) {
         const node = result.content.cloneNode(true);
+        const badge = node.querySelector(".badge");
+        const status = product.availabilityStatus.toLowerCase();
 
         node.querySelector(".result__name").textContent = product.title;
         node.querySelector(".result__vendor").textContent = product.brand ?? "";
-        node.querySelector(".result__eta").textContent = product.shippingInformation;
+        node.querySelector(".result__eta-text").textContent = product.shippingInformation;
         node.querySelector(".price").textContent = money.format(product.price);
 
-        if (product.availabilityStatus.toLowerCase() === "in stock") {
-          node.querySelector(".badge").replaceChildren(badgeInStock.content.cloneNode(true));
-        } else {
-          node.querySelector(".badge").replaceChildren(badgeLowStock.content.cloneNode(true));
+        if (status === "in stock") {
+          badge.className = "badge badge__in-stock";
+          badge.textContent = "Available";
+        } else if (status === "low stock") {
+          badge.className = "badge badge__low-stock";
+          badge.textContent = "Only a few left";
         }
+        
         return node;
       }
 
