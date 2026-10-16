@@ -112,7 +112,7 @@
           </div>
         </li>
       </template>
-      
+
       <div class="results__status"></div>
 
       <ul class="result-list"></ul>
@@ -122,6 +122,7 @@
       feather.replace();
     </script>
     <script type="module">
+      let current = null;
       const summary = document.querySelector('.results__summary');
       const list = document.querySelector(".result-list");
       const skeleton = document.querySelector("#skeleton");
@@ -210,6 +211,9 @@
       }
       
       async function search() {
+        current?.abort();
+        current = new AbortController();
+
         const params = new URLSearchParams({
           q: query.value, 
           sort: sort.value, 
@@ -217,10 +221,13 @@
         show("loading");
 
         try {
-          const response = await fetch(`/products?${params}`);
+          const response = await fetch(`/products?${params}`, {
+            signal: current.signal,
+          });
           const data = await response.json();
           show(response.ok ? "results" : "error", data);
-        } catch {
+        } catch (error) {
+          if (error.name === "AbortError") return;
           show("error", { error: "Failed to load products."})
         }
       }
