@@ -56,7 +56,18 @@
       <div class="results__toolbar">
         <p class="results__summary"></p>
       </div>
+
+      <template id="search-error">
+        <section class="search-error" aria-labelledby="search-error-title">
+          <h2 class="search-error__title" id="search-error-title">Search isn't working right now</h2>
+          <p class="search-error__body">Your search and filters are saved. Try again in a moment.</p>
+          <div class="search-error__actions">
+            <button class="button button--primary" type="button">Try again</button>
+          </div>
+        </section>
+      </template>
       
+      <div class="results__status"></div>
       <ul class="result-list">
         
         <template id="badge-in-stock">
@@ -126,6 +137,8 @@
       const chips = document.querySelector(".chips");
       const track = document.querySelector(".chips__track");
       const chipsClear = document.querySelector(".chips__clear");
+      const searchError = document.querySelector("#search-error");
+      const status = document.querySelector(".results__status");
       const money = new Intl.NumberFormat("en-ZA", {
         style: "currency",
         currency: "ZAR",
@@ -141,14 +154,19 @@
           return;
         }
 
+        list.removeAttribute("aria-busy");
+
         if (state === "error") {
-          summary.textContent = data.error;
-          list.replaceChildren();
+          summary.textContent = "";
+          list.removeAttribute("aria-busy");
+          const node = searchError.content.cloneNode(true);
+          node.querySelector("button").addEventListener("click", search);
+          status.replaceChildren(node);
           return;
         }
 
+        status.replaceChildren();
         summary.textContent = `${data.total} results`;
-
         list.replaceChildren(...data.products.map(card));
       }
     
@@ -224,8 +242,7 @@
         if (selected) selected.checked = false;
         search();
       })
-
-      search();
+      
       loadCategories();
 
     </script>
