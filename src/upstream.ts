@@ -4,10 +4,28 @@ import { fileURLToPath } from "url";
 import { type Product } from "./search.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-let fetches = 0;
 
 export const catalog = JSON.parse(
   await readFile(path.join(__dirname, "../data/catalog.json"), "utf-8"),
+);
+
+export type Offer = {
+  id: number;
+  price: number;
+  availabilityStatus: string;
+  shippingInformation: string;
+}
+
+const offers = new Map<number, Offer>(
+  catalog.products.map((product: Product) => [
+    product.id,
+    {
+      id: product.id,
+      price: product.price ?? 0,
+      availabilityStatus: product.availabilityStatus ?? "",
+      shippingInformation: product.shippingInformation ?? "",
+    },
+  ]),
 );
 
 export function listCategories(): string[] {
@@ -21,14 +39,16 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function fetchCatalog() {
-  const latency = 1000 + Math.random() * 700;
+export async function fetchOffers(ids: number[]): Promise<Offer[]> {
+  const latency = 100 + Math.random() * 700;
   await wait(latency);
 
-  fetches += 1;
-  if (fetches % 10 === 0) {
-    throw new Error("upstream catalog failed");
+  if (Math.random() < 0.2) {
+    throw new Error("upstream offers failed");
   }
 
-  return catalog;
+  return ids.flatMap((id) => {
+    const offer = offers.get(id);
+    return offer ? [offer] : [];
+  });
 }

@@ -1,7 +1,8 @@
-import { queryProducts, type Product } from "./search.js";
+import { queryProducts, sortByPrice, type Product } from "./search.js";
 
 const products: Product[] = [
   {
+    id: 1,
     title: "Essence Mascara",
     description: "Volumizing mascara",
     category: "beauty",
@@ -10,6 +11,7 @@ const products: Product[] = [
     price: 12,
   },
   {
+    id: 2,
     title: "Red Lipstick",
     description: "Bold cream lipstick",
     category: "beauty",
@@ -18,6 +20,7 @@ const products: Product[] = [
     price: 8,
   },
   {
+    id: 3,
     title: "Green Apple",
     description: "Fresh fruit",
     category: "groceries",
@@ -39,14 +42,16 @@ describe("queryProducts", () => {
     const results = queryProducts(products, "cream", "beauty");
     expect(results.map((product) => product.title)).toEqual(["Red Lipstick"]);
   });
+});
 
-  it("sorts by price from low to high", () => {
-    const results = queryProducts(products, "", "");
+describe("sortByPrice", () => {
+  it("sort by price from low to high", () => {
+    const results = sortByPrice(products, "asc");
     expect(results.map((product) => product.price)).toEqual([2, 8, 12]);
   });
 
-  it("sorts by price from high to low", () => {
-    const results = queryProducts(products, "", "", "desc");
+  it("sort by price from high to low", () => {
+    const results = sortByPrice(products, "desc");
     expect(results.map((product) => product.price)).toEqual([12, 8, 2]);
   });
 });

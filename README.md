@@ -2,7 +2,7 @@
 
 A small product search app. One Node process serves a static page from `client/` and a JSON API. The catalog is 40 local products in `data/catalog.json`. Search matches title, description, category, and brand. Results can be filtered by one category and sorted by price.
 
-`GET /products` waits on a simulated upstream: 100–800 ms, and it fails about one time in five. A failure returns `503`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
+Search reads the local catalog. `GET /products` then calls an in-process upstream for price, availability, and delivery: 100–800 ms, and it fails about one time in five. A failure is still `200`, with `enrichment: "failed"` and those fields omitted. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
 
 ## Requirements
 
@@ -35,7 +35,7 @@ Other scripts:
 
 ## API
 
-All routes are on the same origin as the page. `GET /products` can return `503` with `{ "error": "upstream catalog failed" }` when the simulated upstream fails. Retry the request.
+All routes are on the same origin as the page. When the simulated upstream fails, `GET /products` still returns `200` with the matching products and `enrichment: "failed"`. Price, availability, and delivery are omitted. A network failure is separate from that response.
 
 ### `GET /health`
 
@@ -53,7 +53,7 @@ Query parameters:
 
 - `q` — free text. Blank means no text filter.
 - `category` — one category name. Blank means no category filter.
-- `sort` — `asc` (default) or `desc`, by price.
+- `sort` — `asc` (default) or `desc`, by the enriched price. If enrichment fails, the hits stay in catalog order.
 
 ```bash
 curl "http://localhost:3000/products"
@@ -65,10 +65,10 @@ curl "http://localhost:3000/products?q=cream&category=beauty&sort=desc"
 Success:
 
 ```json
-{ "products": [], "total": 0, "query": "mascara" }
+{ "products": [], "total": 0, "query": "mascara", "enrichment": "ok" }
 ```
 
-Each product is a full catalog object (`price`, `brand`, `availabilityStatus`, `shippingInformation`, and the rest).
+`enrichment` is `"ok"` or `"failed"`. On `"ok"`, each product includes `price`, `availabilityStatus`, and `shippingInformation` from the upstream. On `"failed"`, those three fields are absent and the rest of the catalog object remains (`title`, `brand`, `category`, and the rest). An empty match list skips the upstream and returns `enrichment: "ok"`.
 
 ### `GET /products/categories`
 
@@ -101,4 +101,4 @@ curl "http://localhost:3000/products/suggest?q=mas&limit=8"
 
 ## Page
 
-The page at `/` is a search form, category chips, and a price sort. A bare `/` leaves the list empty. A link with `q`, `category`, or `sort` restores the form and runs the search. While `GET /products` is in flight the list shows one skeleton row. A `503` or a network error shows a retry panel.
+The page at `/` is a search form, category chips, and a price sort. A bare `/` leaves the list empty. A link with `q`, `category`, or `sort` restores the form and runs the search. While `GET /products` is in flight the list shows one skeleton row. Each card shows the category above the name. When enrichment succeeds, the card shows the price, availability, and delivery time. When it fails, the card shows “Price unavailable” and a Try again button that runs the search again. A network error shows a retry panel and clears the list.

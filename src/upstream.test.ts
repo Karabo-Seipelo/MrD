@@ -1,6 +1,6 @@
-import { fetchCatalog } from "./upstream.js";
+import { fetchOffers } from "./upstream.js";
 
-describe("fetchCatalog", () => {
+describe("fetchOffers", () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -10,19 +10,24 @@ describe("fetchCatalog", () => {
     vi.restoreAllMocks();
   });
 
-  it("fails on every 10th fetch and then succeeds again", async () => {
+  it("returns price and availability for the requested ids", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99);
+    const pending = fetchOffers([1]);
+    await vi.advanceTimersByTimeAsync(800);
+    await expect(pending).resolves.toEqual([
+      expect.objectContaining({
+        id: 1,
+        price: 9.99,
+        availabilityStatus: "In Stock",
+      }),
+    ]);
+  });
+
+  it("fails when the random check falls in the first fifth", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
-    for (let n = 1; n < 10; n++) {
-      const pending = fetchCatalog();
-      await vi.advanceTimersByTimeAsync(1500);
-      await expect(pending).resolves.toHaveProperty("products");
-    }
-    const failed = fetchCatalog();
-    const rejection = expect(failed).rejects.toThrow("upstream catalog failed");
-    await vi.advanceTimersByTimeAsync(1500);
+    const pending = fetchOffers([1]);
+    const rejection = expect(pending).rejects.toThrow("upstream offers failed");
+    await vi.advanceTimersByTimeAsync(800);
     await rejection;
-    const again = fetchCatalog();
-    await vi.advanceTimersByTimeAsync(1500);
-    await expect(again).resolves.toHaveProperty("products");
   });
 });
