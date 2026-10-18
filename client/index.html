@@ -111,6 +111,7 @@
 
       <template id="result">
         <li class="result-list__item">
+          <p class="result__category">Category</p>
           <h2 class="result__name">Product Name</h2>
           <span class="price">R89.00</span>
           <div class="result__meta">
@@ -141,6 +142,7 @@
 
       <template id="skeleton">
         <li class="result-list__item" aria-hidden="true">
+          <div class="skeleton skeleton__category"></div>
           <div class="skeleton skeleton__name"></div>
           <span class="skeleton skeleton__price"></span>
           <div class="result__meta">
@@ -224,26 +226,45 @@
           return;
         }
 
-        status.replaceChildren();
         summary.textContent = `${data.total} results`;
         list.replaceChildren(...data.products.map(card));
+        status.replaceChildren();
       }
 
       function card(product) {
         const node = result.content.cloneNode(true);
         const badge = node.querySelector(".badge");
-        const status = product.availabilityStatus.toLowerCase();
 
+        node.querySelector(".result__category").textContent = product.category ?? "";
         node.querySelector(".result__name").textContent = product.title;
         node.querySelector(".result__vendor").textContent = product.brand ?? "";
+
+        if (product.price == null || !product.availabilityStatus) {
+          const price = node.querySelector(".price");
+          const offer = document.createElement("div");
+          offer.className = "result__offer";
+          price.textContent = "Price unavailable";
+          price.classList.add("price--missing");
+          price.before(offer);
+          node.querySelector(".result__eta").remove();
+          const retry = document.createElement("button");
+          retry.type = "button";
+          retry.className = "button button--secondary result__retry";
+          retry.textContent = "Try again";
+          retry.addEventListener("click", () => search());
+          offer.append(price, retry);
+          badge.remove();
+          return node;
+        }
+
+        const availability = product.availabilityStatus.toLowerCase();
         node.querySelector(".price").textContent = formatCurrency(product.price);
 
-        if (status === "in stock") {
+        if (availability === "in stock") {
           badge.className = "badge badge__in-stock";
           badge.textContent = "Available";
-          node.querySelector(".result__eta-text").textContent =
-            product.shippingInformation;
-        } else if (status === "low stock") {
+          node.querySelector(".result__eta-text").textContent = product.shippingInformation;
+        } else if (availability === "low stock") {
           badge.className = "badge badge__low-stock";
           badge.textContent = "Only a few left";
           node.querySelector(".result__eta").remove();
@@ -396,7 +417,7 @@
           });
           const data = await response.json();
           show(response.ok ? "results" : "error", data);
-          if (response.ok) rememberSearch(key, data);
+          if (response.ok && data.enrichment !== "failed") rememberSearch(key, data);
           const ms = Math.round(performance.now() - started);
           console.log(`search ${response.status} ${ms}ms`, params.toString());
         } catch (error) {

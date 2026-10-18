@@ -1,10 +1,13 @@
 export type Product = {
+  id: number;
   title: string;
   description: string;
   category: string;
   brand?: string;
   tags?: string[];
-  price: number;
+  price?: number;
+  availabilityStatus?: string;
+  shippingInformation?: string;
 };
 
 function searchProducts(products: Product[], query: string) {
@@ -28,27 +31,31 @@ function searchProducts(products: Product[], query: string) {
 export function queryProducts(
   products: Product[],
   query: string,
-  category: string,
-  sort = "asc",
+  category: string
 ) {
   const matches = searchProducts(products, query);
   const selectedCategory = category.trim().toLowerCase();
-  const filtered = selectedCategory
-    ? matches.filter(
-        (product) => product.category.toLowerCase() === selectedCategory,
-      )
-    : matches;
-  const direction = sort === "desc" ? -1 : 1;
+  if (!selectedCategory) return matches;
 
-  return [...filtered].sort((a, b) => (a.price - b.price) * direction);
+  return matches.filter(
+    (product) => product.category.toLowerCase() === selectedCategory,
+  );
 }
 
-export function suggestProducts(
-  products: Product[],
-  query: string,
-  limit = 8,
-): string[] {
+export function sortByPrice<T extends { price?: number }>(products: T[], sort = "asc") {
+  const direction = sort === "desc" ? -1 : 1;
+
+  return [...products].sort((a, b) => {
+    if (a.price == null && b.price == null) return 0;
+    if (a.price == null) return 1;
+    if (b.price == null) return -1;
+    return (a.price - b.price) * direction;
+  })
+}
+
+export function suggestProducts(products: Product[], query: string, limit = 8): string[] {
   const q = query.trim().toLowerCase();
+  
   if (q.length < 2) return [];
 
   const seen = new Set<string>();
@@ -59,10 +66,8 @@ export function suggestProducts(
       product.title,
       product.description,
       product.category,
-      product.brand ?? "",
-    ]
-      .join(" ")
-      .toLowerCase();
+      product.brand ?? ""
+    ].join(" ").toLowerCase();
 
     if (!text.includes(q)) continue;
     if (seen.has(product.title)) continue;

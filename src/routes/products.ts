@@ -1,10 +1,19 @@
 import { Router } from "express";
-import { fetchCatalog, listCategories, catalog } from "../upstream.js";
-import { queryProducts, suggestProducts, type Product } from "../search.js";
+import { fetchOffers, listCategories, catalog } from "../upstream.js";
+import { queryProducts, sortByPrice,suggestProducts, type Product } from "../search.js";
 
 export const productsRouter = Router();
 
 let searchCount = 0;
+
+function withoutOffer(product: Product): Product {
+  const item = {...product };
+  delete item.price;
+  delete item.availabilityStatus;
+  delete item.shippingInformation;
+
+  return item;
+}
 
 productsRouter.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -13,35 +22,50 @@ productsRouter.get("/health", (_req, res) => {
 productsRouter.get("/products", async (req, res) => {
   const started = performance.now();
   const request = ++searchCount;
-  let status = 503;
+  const q = String(req.query.q ?? "");
+  const category = String(req.query.category ?? "");
+  const sort = String(req.query.sort ?? "asc");
+  const matches = queryProducts(catalog.products as Product[], q, category);
+  let enrichment = "ok";
 
   try {
-    const catalog = await fetchCatalog();
-    const q = String(req.query.q ?? "");
-    const category = String(req.query.category ?? "");
-    const sort = String(req.query.sort ?? "asc");
-    const products = queryProducts(
-      catalog.products as Product[],
-      q,
-      category,
-      sort,
+    if (matches.length === 0) {
+      res.json({
+        products: [],
+        total: 0,
+        query: q,
+        enrichment,
+      });
+      return;
+    }
+
+    const offers = await fetchOffers(matches.map((product) => product.id));
+    const byId = new Map(offers.map((offer) => [offer.id, offer]));
+    const products = sortByPrice(
+      matches.map((product) => ({
+        ...withoutOffer(product),
+        ...byId.get(product.id)
+      })),
+      sort
     );
 
     res.json({
       products,
       total: products.length,
       query: q,
-    });
-    status = 200;
+      enrichment
+    })
   } catch {
-    res.status(503).json({
-      error: "upstream catalog failed",
-    });
+    enrichment = "failed";
+    res.json({
+      products: matches.map(withoutOffer),
+      total: matches.length,
+      query: q,
+      enrichment
+    })
   } finally {
     const ms = Math.round(performance.now() - started);
-    console.log(
-      `search #${request} ${status} ${ms}ms q=${JSON.stringify(String(req.query.q ?? ""))}`,
-    );
+    console.log(`search #${request} 200 ${ms}ms enrichment=${enrichment} q=${JSON.stringify(q)}`)
   }
 });
 
