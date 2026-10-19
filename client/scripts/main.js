@@ -13,12 +13,14 @@ const query = document.querySelector("#q");
 const sort = document.querySelector("#sort");
 
 const search = createSearch({
-  getParams: () =>
-    new URLSearchParams({
-      q: query.value,
+  getParams: () => {
+    const saved = new URLSearchParams(location.search);
+    return new URLSearchParams({
+      q: query.value.trim() || (saved.get("q") ?? "").trim(),
       sort: sort.value,
       category: categoryForRequest(),
-    }),
+    })
+  },
   show: (state, data) => show(state, data, () => search()),
   hideSuggestions,
   writeUrl,

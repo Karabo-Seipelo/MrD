@@ -37,42 +37,37 @@ export function show(state, data, onRetry) {
 
 function card(product, onRetry) {
   const node = result.content.cloneNode(true);
+  const offer = node.querySelector(".result__offer");
+  const price = node.querySelector(".price")
   const badge = node.querySelector(".badge");
+  const eta= node.querySelector(".result__eta");
 
   node.querySelector(".result__category").textContent = product.category ?? "";
   node.querySelector(".result__name").textContent = product.title;
   node.querySelector(".result__vendor").textContent = product.brand ?? "";
 
   if (product.price == null || !product.availabilityStatus) {
-    const price = node.querySelector(".price");
-    const offer = document.createElement("div");
-    offer.className = "result__offer";
-    price.textContent = "Price unavailable";
-    price.classList.add("price--missing");
-    price.before(offer);
-    node.querySelector(".result__eta").remove();
-    const retry = document.createElement("button");
-    retry.type = "button";
-    retry.className = "button button--secondary result__retry";
-    retry.textContent = "Try again";
-    retry.addEventListener("click", () => onRetry());
-    offer.append(price, retry);
-    badge.remove();
+    price.hidden = true;
+    offer.hidden = false;
+    eta.hidden = true;
+    badge.hidden = true;
+
+    offer.querySelector(".result__retry").addEventListener("click", () => onRetry());
+
     return node;
   }
 
+  price.textContent = formatCurrency(product.price);
   const availability = product.availabilityStatus.toLowerCase();
-  node.querySelector(".price").textContent = formatCurrency(product.price);
 
   if (availability === "in stock") {
     badge.className = "badge badge__in-stock";
     badge.textContent = "Available";
-    node.querySelector(".result__eta-text").textContent =
-      product.shippingInformation;
+    node.querySelector(".result__eta-text").textContent = product.shippingInformation;
   } else if (availability === "low stock") {
     badge.className = "badge badge__low-stock";
     badge.textContent = "Only a few left";
-    node.querySelector(".result__eta").remove();
+    eta.hidden = true;
   }
 
   return node;

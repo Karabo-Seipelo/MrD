@@ -613,6 +613,10 @@ h1 {
   background: var(--color-bg);
 }
 
+[hidden] {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chip__label {
     transition: none;
