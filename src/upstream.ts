@@ -14,7 +14,7 @@ export type Offer = {
   price: number;
   availabilityStatus: string;
   shippingInformation: string;
-}
+};
 
 const offers = new Map<number, Offer>(
   catalog.products.map((product: Product) => [

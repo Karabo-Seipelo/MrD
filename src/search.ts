@@ -31,7 +31,7 @@ function searchProducts(products: Product[], query: string) {
 export function queryProducts(
   products: Product[],
   query: string,
-  category: string
+  category: string,
 ) {
   const matches = searchProducts(products, query);
   const selectedCategory = category.trim().toLowerCase();
@@ -42,7 +42,10 @@ export function queryProducts(
   );
 }
 
-export function sortByPrice<T extends { price?: number }>(products: T[], sort = "asc") {
+export function sortByPrice<T extends { price?: number }>(
+  products: T[],
+  sort = "asc",
+) {
   const direction = sort === "desc" ? -1 : 1;
 
   return [...products].sort((a, b) => {
@@ -50,12 +53,16 @@ export function sortByPrice<T extends { price?: number }>(products: T[], sort = 
     if (a.price == null) return 1;
     if (b.price == null) return -1;
     return (a.price - b.price) * direction;
-  })
+  });
 }
 
-export function suggestProducts(products: Product[], query: string, limit = 8): string[] {
+export function suggestProducts(
+  products: Product[],
+  query: string,
+  limit = 8,
+): string[] {
   const q = query.trim().toLowerCase();
-  
+
   if (q.length < 2) return [];
 
   const seen = new Set<string>();
@@ -66,8 +73,10 @@ export function suggestProducts(products: Product[], query: string, limit = 8): 
       product.title,
       product.description,
       product.category,
-      product.brand ?? ""
-    ].join(" ").toLowerCase();
+      product.brand ?? "",
+    ]
+      .join(" ")
+      .toLowerCase();
 
     if (!text.includes(q)) continue;
     if (seen.has(product.title)) continue;

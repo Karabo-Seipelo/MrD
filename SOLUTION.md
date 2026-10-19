@@ -108,8 +108,6 @@ Manual requests live in `api-tester/` (`health.http`, `search.http`) for the RES
 3. If the URL has a query string, `search()` runs once **without** pushing another history entry.
 4. If the URL is bare `/`, the results list stays **empty** — there is no automatic search with an empty `q`.
 
-
-
 ### Search and filters
 
 Submitting the form, changing sort, or selecting a category runs `search()`. Parameters sent to `GET /products` are the current text, selected category (if any), and sort (`asc` / `desc`).
@@ -134,8 +132,6 @@ A new search clears the status area before showing the skeleton. When the browse
 - **Client cache:** Product responses with `enrichment: "ok"` are keyed by full query string (max 20 entries, LRU-style touch). An enrichment failure and a network error are not cached, so Try again calls the upstream again. Cache hits log `search cache hit` in the browser console.
 - **Instrumentation:** Browser console logs `search {status} {ms}ms` per fetch; server logs as above in the `pnpm dev` terminal.
 
-
-
 ## Trade-offs
 
 **A failed offer lookup still returns the hits.** `GET /products` responds `200` with `enrichment: "failed"`. Price, availability, and delivery are omitted, and each card shows “Price unavailable” and Try again. The product names stay on screen, which matches showing those fields when the upstream has them. The status code itself stays `200`, so the failure shows up in `enrichment` and in the server log (`enrichment=failed`). That response is not cached, so Try again calls `fetchOffers` again.
@@ -146,23 +142,18 @@ A new search clears the status area before showing the skeleton. When the browse
 
 ## Design decisions (summary)
 
-
-| Topic                | Choice                                  | Why                                                                |
-| -------------------- | --------------------------------------- | ------------------------------------------------------------------ |
-| Upstream             | In-process `fetchOffers`, delay and random failure | Live price and availability without a second service        |
-| Failed enrichment    | `200` with hits, commercial fields omitted | Names stay on screen; each card can retry                        |
-| Suggest / categories | No `fetchOffers`                        | Fast chips and dropdown; only product search pays upstream latency |
-| UI stack             | HTML templates + DOM script             | Small surface area for the assignment; easy to run                 |
-| Concurrency          | `AbortController` on search and suggest | Avoid stale results when the user types or changes filters quickly |
-| Skeleton count       | One row                                 | Reduces CLS when a query returns few cards                         |
-| Sort                 | Price only                              | Meets “one sort” while giving asc/desc in the UI                   |
-
-
-
+| Topic                | Choice                                             | Why                                                                |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------ |
+| Upstream             | In-process `fetchOffers`, delay and random failure | Live price and availability without a second service               |
+| Failed enrichment    | `200` with hits, commercial fields omitted         | Names stay on screen; each card can retry                          |
+| Suggest / categories | No `fetchOffers`                                   | Fast chips and dropdown; only product search pays upstream latency |
+| UI stack             | HTML templates + DOM script                        | Small surface area for the assignment; easy to run                 |
+| Concurrency          | `AbortController` on search and suggest            | Avoid stale results when the user types or changes filters quickly |
+| Skeleton count       | One row                                            | Reduces CLS when a query returns few cards                         |
+| Sort                 | Price only                                         | Meets “one sort” while giving asc/desc in the UI                   |
 
 ## AI assistance
 
 Cursor Chat was used as a rubber-ducking tool while extending the page, helping me articulate my reasoning and think through implementation challenges, particularly when working with Express.js, which I hadn't used in several years.
 
 AI was also used to review my code for potential issues and areas for improvement, and to assist with documenting the project.
-

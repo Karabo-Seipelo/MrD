@@ -26,11 +26,11 @@ PORT=3001 pnpm dev
 
 Other scripts:
 
-| Script | What it does |
-| --- | --- |
-| `pnpm dev` | Start with `tsx watch` |
-| `pnpm test` | Run Vitest once |
-| `pnpm build` | Compile TypeScript to `dist/` |
+| Script       | What it does                                 |
+| ------------ | -------------------------------------------- |
+| `pnpm dev`   | Start with `tsx watch`                       |
+| `pnpm test`  | Run Vitest once                              |
+| `pnpm build` | Compile TypeScript to `dist/`                |
 | `pnpm start` | Run the compiled server (`pnpm build` first) |
 
 ## API

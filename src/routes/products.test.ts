@@ -59,13 +59,15 @@ describe("Products router", () => {
       sort: "desc",
     });
 
-    expect(response.body.products.map((product: { id: number }) => product.id)).toEqual([
-      5, 4, 3, 2, 1,
-    ]);
+    expect(
+      response.body.products.map((product: { id: number }) => product.id),
+    ).toEqual([5, 4, 3, 2, 1]);
   });
 
   it("returns the hits without price when the upstream fails", async () => {
-    vi.mocked(fetchOffers).mockRejectedValue(new Error("upstream offers failed"));
+    vi.mocked(fetchOffers).mockRejectedValue(
+      new Error("upstream offers failed"),
+    );
 
     const response = await request(app).get("/products").query({
       q: "mascara",

@@ -1,13 +1,18 @@
 import { Router } from "express";
 import { fetchOffers, listCategories, catalog } from "../upstream.js";
-import { queryProducts, sortByPrice,suggestProducts, type Product } from "../search.js";
+import {
+  queryProducts,
+  sortByPrice,
+  suggestProducts,
+  type Product,
+} from "../search.js";
 
 export const productsRouter = Router();
 
 let searchCount = 0;
 
 function withoutOffer(product: Product): Product {
-  const item = {...product };
+  const item = { ...product };
   delete item.price;
   delete item.availabilityStatus;
   delete item.shippingInformation;
@@ -44,28 +49,30 @@ productsRouter.get("/products", async (req, res) => {
     const products = sortByPrice(
       matches.map((product) => ({
         ...withoutOffer(product),
-        ...byId.get(product.id)
+        ...byId.get(product.id),
       })),
-      sort
+      sort,
     );
 
     res.json({
       products,
       total: products.length,
       query: q,
-      enrichment
-    })
+      enrichment,
+    });
   } catch {
     enrichment = "failed";
     res.json({
       products: matches.map(withoutOffer),
       total: matches.length,
       query: q,
-      enrichment
-    })
+      enrichment,
+    });
   } finally {
     const ms = Math.round(performance.now() - started);
-    console.log(`search #${request} 200 ${ms}ms enrichment=${enrichment} q=${JSON.stringify(q)}`)
+    console.log(
+      `search #${request} 200 ${ms}ms enrichment=${enrichment} q=${JSON.stringify(q)}`,
+    );
   }
 });
 
