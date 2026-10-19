@@ -25,10 +25,13 @@ export function createSearch({ getParams, show, hideSuggestions, writeUrl }) {
 
     if (cached) {
       show("results", cached);
+      console.log(`search cache hit`, key);
       return;
     }
 
     show("loading");
+
+    const started = performance.now();
 
     try {
       const response = await fetch(`/products?${params}`, {
@@ -39,9 +42,12 @@ export function createSearch({ getParams, show, hideSuggestions, writeUrl }) {
 
       if (response.ok && data.enrichment !== "failed")
         rememberSearch(key, data);
+      const ms = Math.round(performance.now() - started);
+      console.log(`search ${response.status} ${ms}ms`, params.toString());
     } catch (error) {
       if (error.name === "AbortError") return;
       show("error", { error: "Failed to load products" });
+      console.log(`search failed ${Math.round(performance.now() - started)}ms`);
     }
   };
 }

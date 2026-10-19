@@ -26,8 +26,8 @@ function renderSuggestion(items) {
 
   const fragment = document.createDocumentFragment();
   for ( const title of items ) {
-    const node = suggestItem.textContent.cloneNode(true);
-    const li = node.createElement(".suggest__item");
+    const node = suggestItem.content.cloneNode(true);
+    const li = node.querySelector(".suggest__item");
     li.textContent = title;
     li.addEventListener("click", () => {
       query.value = title;
