@@ -40,6 +40,9 @@
                   role="listbox"
                   hidden
                 ></ul>
+                <template id="suggest-item">
+                  <li class="suggest__item" role="option"></li>
+                </template>
               </div>
               <button
                 class="button button--primary search__submit"
@@ -72,6 +75,12 @@
                     Clear
                   </button>
                 </div>
+                <template id="chip">
+                  <label class="chip">
+                    <input class="chip__input" type="radio" name="category" />
+                    <span class="chip__label"></span>
+                  </label>
+                </template>
               </fieldset>
             </div>
             <div class="sort">
@@ -113,7 +122,7 @@
         <li class="result-list__item">
           <p class="result__category">Category</p>
           <h2 class="result__name">Product Name</h2>
-          <span class="price">R89.00</span>
+          <span class="price" data-price>R89.00</span>
           <div class="result__offer" hidden>
             <span class="price price--missing">Price unavaliable</span>
             <button class="button button--secondary result__retry" type="button">Try again</button>

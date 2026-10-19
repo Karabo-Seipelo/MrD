@@ -1,6 +1,7 @@
 const query = document.querySelector("#q");
 const suggestList = document.querySelector("#suggest-list");
 const searchField = document.querySelector(".search__field");
+const suggestItem = document.querySelector("#suggest-item");
 
 let suggestTimer = null;
 let suggestAbort = null;
@@ -18,24 +19,25 @@ export function hideSuggestions() {
 }
 
 function renderSuggestion(items) {
-  suggestList.replaceChildren();
-  if (!items.length) {
+  if (!items.length){
     hideSuggestions();
     return;
   }
 
-  for (const title of items) {
-    const li = document.createElement("li");
-    li.className = "suggest__item";
-    li.setAttribute("role", "option");
+  const fragment = document.createDocumentFragment();
+  for ( const title of items ) {
+    const node = suggestItem.textContent.cloneNode(true);
+    const li = node.createElement(".suggest__item");
     li.textContent = title;
     li.addEventListener("click", () => {
       query.value = title;
       hideSuggestions();
       onPick();
     });
-    suggestList.append(li);
+    fragment.append(node);
   }
+
+  suggestList.replaceChildren(fragment);
   suggestList.hidden = false;
   query.setAttribute("aria-expanded", "true");
 }

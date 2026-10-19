@@ -38,7 +38,7 @@ export function show(state, data, onRetry) {
 function card(product, onRetry) {
   const node = result.content.cloneNode(true);
   const offer = node.querySelector(".result__offer");
-  const price = node.querySelector(".price")
+  const price = node.querySelector("[data-price]")
   const badge = node.querySelector(".badge");
   const eta= node.querySelector(".result__eta");
 

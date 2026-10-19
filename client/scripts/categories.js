@@ -1,23 +1,15 @@
 const chips = document.querySelector(".chips");
 const track = document.querySelector(".chips__track");
 const chipsClear = document.querySelector(".chips__clear");
+const chipTemplate = document.querySelector("#chip");
 
 function chip(name) {
-  const label = document.createElement("label");
-  label.className = "chip";
-
-  const input = document.createElement("input");
-  input.className = "chip__input";
-  input.type = "radio";
-  input.name = "category";
+  const node = chipTemplate.content.cloneNode(true);
+  const input = node.querySelector(".chip__input");
+  const label = node.querySelector(".chip__label");
   input.value = name;
-
-  const text = document.createElement("span");
-  text.className = "chip__label";
-  text.textContent = name.charAt(0).toUpperCase() + name.slice(1);
-
-  label.append(input, text);
-  return label;
+  label.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+  return node;
 }
 
 export function selectedCategory() {
@@ -41,9 +33,11 @@ export async function loadCategories() {
   const response = await fetch("/products/categories");
   const data = await response.json();
   const clear = track.querySelector(".chips__clear");
+  const fragment = document.createDocumentFragment();
   for (const name of data.categories) {
-    track.insertBefore(chip(name), clear);
+    fragment.append(chip(name));
   }
+  clear.before(fragment);
 }
 
 export function bindCategories(onChange) {
