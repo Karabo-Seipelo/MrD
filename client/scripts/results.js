@@ -7,7 +7,15 @@ const result = document.querySelector("#result");
 const searchError = document.querySelector("#search-error");
 const status = document.querySelector(".results__status");
 
+let retry = () => {};
+
+list.addEventListener("click", (event) => {
+  if (event.target.closest(".result__retry")) retry();
+});
+
 export function show(state, data, onRetry) {
+  retry = onRetry;
+
   if (state === "loading") {
     status.replaceChildren();
     summary.textContent = "Loading...";
@@ -52,7 +60,7 @@ function card(product, onRetry) {
     eta.hidden = true;
     badge.hidden = true;
 
-    offer.querySelector(".result__retry").addEventListener("click", () => onRetry());
+    // offer.querySelector(".result__retry").addEventListener("click", () => onRetry());
 
     return node;
   }

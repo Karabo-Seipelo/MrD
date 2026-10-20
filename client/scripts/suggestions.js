@@ -29,11 +29,6 @@ function renderSuggestion(items) {
     const node = suggestItem.content.cloneNode(true);
     const li = node.querySelector(".suggest__item");
     li.textContent = title;
-    li.addEventListener("click", () => {
-      query.value = title;
-      hideSuggestions();
-      onPick();
-    });
     fragment.append(node);
   }
 
@@ -87,6 +82,14 @@ async function updateSuggestions() {
 
 export function bindSuggestions({ onPick: pick }) {
   onPick = pick;
+
+  suggestList.addEventListener("click", (event) => {
+    const item = event.target.closest(".suggest__item");
+    if (!item) return;
+    query.value = item.textContent;
+    hideSuggestions();
+    onPick();
+  });
 
   query.addEventListener("input", () => {
     clearTimeout(suggestTimer);
