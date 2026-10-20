@@ -19,7 +19,7 @@ const search = createSearch({
       q: query.value.trim() || (saved.get("q") ?? "").trim(),
       sort: sort.value,
       category: categoryForRequest(),
-    })
+    });
   },
   show: (state, data) => show(state, data, () => search()),
   hideSuggestions,

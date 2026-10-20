@@ -19,13 +19,13 @@ export function hideSuggestions() {
 }
 
 function renderSuggestion(items) {
-  if (!items.length){
+  if (!items.length) {
     hideSuggestions();
     return;
   }
 
   const fragment = document.createDocumentFragment();
-  for ( const title of items ) {
+  for (const title of items) {
     const node = suggestItem.content.cloneNode(true);
     const li = node.querySelector(".suggest__item");
     li.textContent = title;

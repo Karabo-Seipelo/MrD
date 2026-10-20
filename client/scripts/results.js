@@ -46,9 +46,9 @@ export function show(state, data, onRetry) {
 function card(product, onRetry) {
   const node = result.content.cloneNode(true);
   const offer = node.querySelector(".result__offer");
-  const price = node.querySelector("[data-price]")
+  const price = node.querySelector("[data-price]");
   const badge = node.querySelector(".badge");
-  const eta= node.querySelector(".result__eta");
+  const eta = node.querySelector(".result__eta");
 
   node.querySelector(".result__category").textContent = product.category ?? "";
   node.querySelector(".result__name").textContent = product.title;
@@ -71,7 +71,8 @@ function card(product, onRetry) {
   if (availability === "in stock") {
     badge.className = "badge badge__in-stock";
     badge.textContent = "Available";
-    node.querySelector(".result__eta-text").textContent = product.shippingInformation;
+    node.querySelector(".result__eta-text").textContent =
+      product.shippingInformation;
   } else if (availability === "low stock") {
     badge.className = "badge badge__low-stock";
     badge.textContent = "Only a few left";
