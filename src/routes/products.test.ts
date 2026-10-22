@@ -49,6 +49,51 @@ describe("Products router", () => {
     });
   });
 
+  it("paginates results after sorting", async () => {
+    vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
+      offersFor(ids, (id) => id),
+    );
+
+    const page1 = await request(app).get("/products").query({
+      category: "beauty",
+      limit: 2,
+      page: 1,
+      sort: "desc",
+    });
+    const page3 = await request(app).get("/products").query({
+      category: "beauty",
+      limit: 2,
+      page: 3,
+      sort: "desc",
+    });
+
+    expect(page1.body.total).toBe(5);
+    expect(page1.body.page).toBe(1);
+    expect(page1.body.limit).toBe(2);
+    expect(page1.body.products.map((product: { id: number }) => product.id)).toEqual(
+      [5, 4],
+    );
+    expect(page3.body.products.map((product: { id: number }) => product.id)).toEqual(
+      [1],
+    );
+  });
+
+  it("paginates on wholesale upstream failure", async () => {
+    vi.mocked(fetchOffers).mockRejectedValue(
+      new Error("upstream offers failed"),
+    );
+
+    const response = await request(app).get("/products").query({
+      category: "beauty",
+      limit: 2,
+      page: 2,
+    });
+
+    expect(response.body.enrichment).toBe("failed");
+    expect(response.body.total).toBe(5);
+    expect(response.body.products).toHaveLength(2);
+  });
+
   it("sorts by the enriched price", async () => {
     vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
       offersFor(ids, (id) => id),
@@ -62,6 +107,52 @@ describe("Products router", () => {
     expect(
       response.body.products.map((product: { id: number }) => product.id),
     ).toEqual([5, 4, 3, 2, 1]);
+  });
+
+  it("flags partial enrichment when only some offers return", async () => {
+    vi.mocked(fetchOffers).mockResolvedValue([
+      {
+        id: 1,
+        price: 30,
+        availabilityStatus: "In Stock",
+        shippingInformation: "Delivery 25-35 min",
+      },
+    ]);
+
+    const response = await request(app).get("/products").query({
+      category: "beauty",
+      sort: "asc",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.enrichment).toBe("partial");
+    expect(response.body.total).toBe(5);
+
+    const byId = Object.fromEntries(
+      response.body.products.map((product: { id: number }) => [
+        product.id,
+        product,
+      ]),
+    );
+    expect(byId[1].price).toBe(30);
+    expect(byId[2].price).toBeUndefined();
+    expect(byId[2].availabilityStatus).toBeUndefined();
+  });
+
+  it("flags partial enrichment when upstream returns no offers", async () => {
+    vi.mocked(fetchOffers).mockResolvedValue([]);
+
+    const response = await request(app).get("/products").query({
+      category: "beauty",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.enrichment).toBe("partial");
+    expect(response.body.total).toBe(5);
+    for (const product of response.body.products) {
+      expect(product.price).toBeUndefined();
+      expect(product.availabilityStatus).toBeUndefined();
+    }
   });
 
   it("returns the hits without price when the upstream fails", async () => {

@@ -1,4 +1,10 @@
-import { queryProducts, sortByPrice, type Product } from "./search.js";
+import {
+  paginate,
+  parsePagination,
+  queryProducts,
+  sortByPrice,
+  type Product,
+} from "./search.js";
 
 const products: Product[] = [
   {
@@ -41,6 +47,33 @@ describe("queryProducts", () => {
   it("filters by category", () => {
     const results = queryProducts(products, "cream", "beauty");
     expect(results.map((product) => product.title)).toEqual(["Red Lipstick"]);
+  });
+});
+
+describe("parsePagination", () => {
+  it("uses defaults for invalid input", () => {
+    expect(parsePagination(undefined, undefined)).toEqual({ page: 1, limit: 10 });
+    expect(parsePagination("x", "-1")).toEqual({ page: 1, limit: 10 });
+  });
+
+  it("clamps limit to the maximum", () => {
+    expect(parsePagination(2, 100)).toEqual({ page: 2, limit: 40 });
+  });
+});
+
+describe("paginate", () => {
+  const items = [1, 2, 3, 4, 5];
+
+  it("returns the first page", () => {
+    expect(paginate(items, 1, 2)).toEqual([1, 2]);
+  });
+
+  it("returns the last partial page", () => {
+    expect(paginate(items, 3, 2)).toEqual([5]);
+  });
+
+  it("returns an empty array beyond the end", () => {
+    expect(paginate(items, 10, 2)).toEqual([]);
   });
 });
 

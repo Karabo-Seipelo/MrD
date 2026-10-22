@@ -1,0 +1,244 @@
+{
+  "offers": [
+    {
+      "id": 1,
+      "price": 9.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 25-35 min"
+    },
+    {
+      "id": 2,
+      "price": 19.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 35-50 min"
+    },
+    {
+      "id": 3,
+      "price": 14.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    },
+    {
+      "id": 4,
+      "price": 12.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 5,
+      "price": 8.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 6,
+      "price": 49.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 7,
+      "price": 129.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 8,
+      "price": 89.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 35-50 min"
+    },
+    {
+      "id": 9,
+      "price": 69.99,
+      "availabilityStatus": "Low Stock",
+      "shippingInformation": "Delivery 45-60 min"
+    },
+    {
+      "id": 10,
+      "price": 79.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 11,
+      "price": 1899.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 45-60 min"
+    },
+    {
+      "id": 12,
+      "price": 2499.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 13,
+      "price": 299.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 14,
+      "price": 499.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 15,
+      "price": 799.99,
+      "availabilityStatus": "Low Stock",
+      "shippingInformation": "Delivery 25-35 min"
+    },
+    {
+      "id": 16,
+      "price": 1.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 35-50 min"
+    },
+    {
+      "id": 17,
+      "price": 12.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 18,
+      "price": 8.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 19,
+      "price": 9.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 45-60 min"
+    },
+    {
+      "id": 20,
+      "price": 4.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    },
+    {
+      "id": 21,
+      "price": 1.49,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    },
+    {
+      "id": 22,
+      "price": 10.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    },
+    {
+      "id": 23,
+      "price": 2.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 24,
+      "price": 14.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 25-35 min"
+    },
+    {
+      "id": 25,
+      "price": 1.29,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 26,
+      "price": 0.99,
+      "availabilityStatus": "Low Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 27,
+      "price": 6.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    },
+    {
+      "id": 28,
+      "price": 5.49,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 35-50 min"
+    },
+    {
+      "id": 29,
+      "price": 3.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 30,
+      "price": 2.49,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 31,
+      "price": 0.79,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 45-60 min"
+    },
+    {
+      "id": 32,
+      "price": 3.49,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 35-50 min"
+    },
+    {
+      "id": 33,
+      "price": 4.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 30-45 min"
+    },
+    {
+      "id": 34,
+      "price": 7.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    },
+    {
+      "id": 35,
+      "price": 2.29,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 25-35 min"
+    },
+    {
+      "id": 36,
+      "price": 19.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 45-60 min"
+    },
+    {
+      "id": 37,
+      "price": 1.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 25-35 min"
+    },
+    {
+      "id": 38,
+      "price": 5.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 15-25 min"
+    },
+    {
+      "id": 39,
+      "price": 1.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 35-50 min"
+    },
+    {
+      "id": 40,
+      "price": 3.99,
+      "availabilityStatus": "In Stock",
+      "shippingInformation": "Delivery 20-30 min"
+    }
+  ]
+}

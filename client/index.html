@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Product Search" />
     <meta name="keywords" content="Product Search" />
-    <link rel="stylesheet" href="./styles.css?v6" />
+    <link rel="stylesheet" href="./styles.css?v7" />
   </head>
   <body>
     <header class="site-header">
@@ -99,7 +99,21 @@
 
     <main class="results">
       <div class="results__toolbar">
-        <p class="results__summary"></p>
+        <p class="results__summary" aria-live="polite"></p>
+        <nav class="pager" aria-label="Results pages" hidden>
+          <p class="pager__range"></p>
+          <div class="pager__actions">
+            <button
+              type="button"
+              class="button button--secondary pager__prev"
+            >
+              Previous
+            </button>
+            <button type="button" class="button button--secondary pager__next">
+              Next
+            </button>
+          </div>
+        </nav>
       </div>
 
       <template id="search-error">

@@ -1,38 +1,38 @@
-import {
-  loadCategories,
-  categoryForRequest,
-  bindCategories,
-} from "./categories.js";
+import { loadCategories, bindCategories } from "./categories.js";
 import { hideSuggestions, bindSuggestions } from "./suggestions.js";
 import { show, showEmpty } from "./results.js";
-import { writeUrl, applyFromLocation } from "./url.js";
+import { applyFromLocation, resetPage, setPage, writeUrl } from "./url.js";
 import { createSearch, abortSearch } from "./search.js";
 
 const form = document.querySelector(".search");
-const query = document.querySelector("#q");
 const sort = document.querySelector("#sort");
 
-const search = createSearch({
-  getParams: () =>
-    new URLSearchParams({
-      q: query.value.trim(),
-      sort: sort.value,
-      category: categoryForRequest(),
+const { search, applyView, syncView } = createSearch({
+  show: (state, data) =>
+    show(state, data, {
+      onRetry: () => search({ refetch: true }),
+      onPageChange: (page) => {
+        setPage(page);
+        writeUrl();
+        applyView();
+      },
     }),
-  show: (state, data) => show(state, data, () => search()),
   hideSuggestions,
-  writeUrl,
 });
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
-  search();
+  search({ resetPage: true });
 });
 
-sort.addEventListener("change", () => search());
+sort.addEventListener("change", () => {
+  resetPage();
+  writeUrl();
+  applyView();
+});
 
-bindCategories(() => search());
-bindSuggestions({ onPick: () => search() });
+bindCategories(() => search({ resetPage: true }));
+bindSuggestions({ onPick: () => search({ resetPage: true }) });
 
 window.addEventListener("online", () => {
   if (document.querySelector(".results__status .search-error")) search();
@@ -41,7 +41,7 @@ window.addEventListener("online", () => {
 window.addEventListener("popstate", (event) => {
   applyFromLocation();
   if (location.search || event.state?.searched) {
-    search({ record: false });
+    syncView({ record: false });
   } else {
     abortSearch();
     hideSuggestions();

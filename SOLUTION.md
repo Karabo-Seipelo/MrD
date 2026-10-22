@@ -56,12 +56,16 @@ Query parameters:
 - `q` — free text. Matched case-insensitively as a substring against title, description, category, and brand. Blank means no text filter.
 - `category` — single category. Trimmed and compared case-insensitively. Blank means no category filter.
 - `sort` — `asc` or `desc`. Applied to the enriched price. Anything other than `desc` (including missing) sorts low to high. If enrichment fails, there is no price to sort on, so the hits stay in catalog order.
+- `page` — 1-based page (default `1`). Invalid values floor to `1`.
+- `limit` — page size (default `10`, max `40`).
 
-Response: `{ products, total, query, enrichment }`. `enrichment` is `"ok"` or `"failed"`.
+The route enriches and sorts the **full** match set, then slices the window for the response. `total` is the full hit count; `products` holds at most `limit` items. Upstream still loads every matching id once per search so global price sort stays correct.
 
-On `"ok"`, each product is the catalog object plus `price`, `availabilityStatus`, and `shippingInformation` from the upstream. On `"failed"`, those three fields are removed and the catalog fields remain. An empty match list does not call the upstream and returns `enrichment: "ok"`.
+Response: `{ products, total, page, limit, query, enrichment }`. `enrichment` is `"ok"`, `"partial"`, or `"failed"`.
 
-The route logs each search to the server terminal, for example `search #3 200 412ms enrichment=ok q="cream"`. A failed offer lookup is still status `200`, with `enrichment=failed` in that line.
+On `"ok"`, every product **on this page** is fully enriched. On `"partial"`, the upstream call succeeded but at least one row on this page is missing commercial fields. On `"failed"`, the wholesale upstream throw ran and no row gets commercial fields. An empty match list does not call the upstream and returns `enrichment: "ok"`.
+
+The route logs each search to the server terminal, for example `search #3 200 412ms enrichment=ok q="cream"`. Wholesale and partial failures are still status `200`; the log line shows `enrichment=partial` or `enrichment=failed` as appropriate.
 
 ### `GET /products/categories`
 
@@ -81,9 +85,9 @@ Returns `{ status: "ok", timestamp }` where `timestamp` is the server time in IS
 
 ## Catalog and upstream
 
-The catalog is a local JSON file of 40 items in `data/catalog.json`, copied from the [DummyJSON](https://dummyjson.com/products) products resource. Search uses that file directly. At startup the process also builds an in-memory offer map from each item’s `id`, `price`, `availabilityStatus`, and `shippingInformation`.
+The catalog is a local JSON file of 40 items in `data/catalog.json`, copied from the [DummyJSON](https://dummyjson.com/products) products resource. Search uses that file directly. Commercial fields live in a mirrored `data/offers.json` (`id`, `price`, `availabilityStatus`, `shippingInformation`). At startup the process loads both files, throws if product ids and offer ids do not match, and builds an in-memory offer map from `offers.json`.
 
-`fetchOffers` is that simulated upstream. It is an in-process function, not a second HTTP service. It waits 100–800 ms and throws about one time in five (`upstream offers failed`). One call covers every id in the result set. The route then joins offers back onto the matches by `id`. The cost of that single call is under Trade-offs.
+`fetchOffers` is that simulated upstream. It is an in-process function, not a second HTTP service. It waits 100–800 ms, throws about one time in five for a wholesale failure (`upstream offers failed`), and on success can omit individual ids at random (per-offer failure). One call covers every id in the result set. The route joins returned offers onto the matches by `id` and sets `enrichment` from how many rows were enriched. The cost of that single call is under Trade-offs.
 
 Search logic lives in pure functions in `src/search.ts` (filter, category, price sort, suggest titles) so Vitest can test without HTTP.
 
@@ -103,14 +107,14 @@ Manual requests live in `api-tester/` (`health.http`, `search.http`) for the RES
 
 ### Initial load
 
-1. The form is synced from the URL (`q`, `category`, `sort=desc` when present).
+1. The form is synced from the URL (`q`, `category`, `sort=desc`, `page` when present).
 2. `GET /products/categories` fills category radio chips (with a Clear control).
 3. If the URL has a query string, `search()` runs once **without** pushing another history entry.
 4. If the URL is bare `/`, the results list stays **empty** — there is no automatic search with an empty `q`.
 
 ### Search and filters
 
-Submitting the form, changing sort, or selecting a category runs `search()`. Parameters sent to `GET /products` are the current text, selected category (if any), and sort (`asc` / `desc`).
+Submitting the form or selecting a category runs `search()` and resets to page 1. The browser sends only `q`, `category`, and `limit=40` to `GET /products` (one upstream call per filter). The full enriched response is kept in a session; **sort** and **UI paging** (10 rows per page) run in [`client/scripts/sort.js`](client/scripts/sort.js) via `applyView()` without refetching. Changing sort or Previous/Next updates the URL and re-renders from session. Direct API clients can still pass `sort`, `page`, and `limit` for server-side behaviour.
 
 Category chips are radios built from the categories endpoint. Clear unchecks the selection so the next request omits the category filter.
 
@@ -119,7 +123,7 @@ Sort labels on the page are “Price: low to high” and “Price: high to low�
 ### Loading, results, and errors
 
 - **Loading:** summary “Loading…”, **one** skeleton row (same height as a result card to limit layout shift), `aria-busy` on the list.
-- **Success:** summary “N results”, list filled by cloning `#result`. Category in small capitals above the title, then brand, a ZAR price (`Intl.NumberFormat`), delivery line from `shippingInformation`, and a badge from `availabilityStatus` (`Available` / `Only a few left`; low stock removes the delivery row). Search and clock icons are inline SVGs (no third-party icon script).
+- **Success:** summary “N results” (full hit count), optional pager “Showing X–Y of N” when `total > limit`, list filled by cloning `#result`. Category in small capitals above the title, then brand, a ZAR price (`Intl.NumberFormat`), delivery line from `shippingInformation`, and a badge from `availabilityStatus` (`Available` / `Only a few left`; low stock removes the delivery row). Search and clock icons are inline SVGs (no third-party icon script).
 - **Enrichment failed:** same list of hits. Each card shows “Price unavailable” and a secondary Try again button, which calls `search()` again. Availability and delivery are omitted. This response is not cached.
 - **Network error:** list cleared; `#search-error` cloned into `.results__status` with Try again → `search()`. Aborted requests (`AbortController`) do not show the error panel.
 
@@ -127,16 +131,16 @@ A new search clears the status area before showing the skeleton. When the browse
 
 ### Stretch behaviour on the page
 
-- **URL sync:** User-initiated searches update the address bar with `history.pushState` (`q`, `category`, `sort=desc` when set). Back/Forward restores the form and re-runs or clears results. Shared links restore state.
+- **URL sync:** User-initiated searches update the address bar with `history.pushState` (`q`, `category`, `sort=desc`, `page` when set). Back/Forward restores the form and re-runs or clears results. Shared links restore state.
 - **Type-ahead:** Debounced input calls `GET /products/suggest`; prior suggest requests are aborted; titles are cached in a small in-memory map.
-- **Client cache:** Product responses with `enrichment: "ok"` are keyed by full query string (max 20 entries, LRU-style touch). An enrichment failure and a network error are not cached, so Try again calls the upstream again. Cache hits log `search cache hit` in the browser console.
+- **Client cache:** Only fully enriched sessions are keyed by `q` + `category` (max 20 entries, LRU-style touch). Sort and page are not part of the key. `"partial"`, `"failed"`, and network errors are not cached, so Try again refetches. Cache hits log `search cache hit` in the browser console.
 - **Instrumentation:** Browser console logs `search {status} {ms}ms` per fetch; server logs as above in the `pnpm dev` terminal.
 
 ## Trade-offs
 
 **A failed offer lookup still returns the hits.** `GET /products` responds `200` with `enrichment: "failed"`. Price, availability, and delivery are omitted, and each card shows “Price unavailable” and Try again. The product names stay on screen, which matches showing those fields when the upstream has them. The status code itself stays `200`, so the failure shows up in `enrichment` and in the server log (`enrichment=failed`). That response is not cached, so Try again calls `fetchOffers` again.
 
-**One upstream call covers the whole result set.** `fetchOffers` loads price, availability, and delivery for every matching id together. One failure drops those three fields on every row. The page keeps one loading state and one retry. A per-row provider could leave some cards priced and others not, with a separate retry on each.
+**One upstream call covers the whole result set.** `fetchOffers` loads price, availability, and delivery for matching ids in one round trip. A wholesale failure drops commercial fields on every row (`enrichment: "failed"`). Per-id omissions leave a mix of priced and unpriced cards (`enrichment: "partial"`). Neither partial nor failed responses are cached.
 
 **Price is the only sort.** The brief asks for one sort, and gives popularity or price as the examples. The API and the select order by the enriched price, low to high or high to low. There is no popularity order. When enrichment fails there is no price, so the hits stay in catalog order.
 

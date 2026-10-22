@@ -5,9 +5,6 @@ export type Product = {
   category: string;
   brand?: string;
   tags?: string[];
-  price?: number;
-  availabilityStatus?: string;
-  shippingInformation?: string;
 };
 
 function searchProducts(products: Product[], query: string) {
@@ -40,6 +37,34 @@ export function queryProducts(
   return matches.filter(
     (product) => product.category.toLowerCase() === selectedCategory,
   );
+}
+
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_LIMIT = 10;
+export const MAX_LIMIT = 40;
+
+export function parsePagination(
+  pageRaw: unknown,
+  limitRaw: unknown,
+): { page: number; limit: number } {
+  const pageNumber = Number(pageRaw);
+  const page =
+    Number.isFinite(pageNumber) && pageNumber >= 1
+      ? Math.floor(pageNumber)
+      : DEFAULT_PAGE;
+
+  const limitNumber = Number(limitRaw);
+  const limit =
+    Number.isFinite(limitNumber) && limitNumber >= 1
+      ? Math.min(Math.floor(limitNumber), MAX_LIMIT)
+      : DEFAULT_LIMIT;
+
+  return { page, limit };
+}
+
+export function paginate<T>(items: T[], page: number, limit: number): T[] {
+  const start = (page - 1) * limit;
+  return items.slice(start, start + limit);
 }
 
 export function sortByPrice<T extends { price?: number }>(
