@@ -1,4 +1,3 @@
-import { enrichmentStatus } from "./enrichment.js";
 import { paginate, sortByPrice } from "./sort.js";
 import {
   buildFetchParams,
@@ -39,7 +38,7 @@ function mergeProductOffers(previous, incoming) {
       ...product,
       price: product.price ?? prior.price,
       availabilityStatus:
-        product.availabilityStatus || prior.availabilityStatus,
+        product.availabilityStatus ?? prior.availabilityStatus,
       shippingInformation:
         product.shippingInformation ?? prior.shippingInformation,
     };
@@ -59,7 +58,7 @@ function applyView() {
     query: session.query,
     page,
     limit: DEFAULT_LIMIT,
-    enrichment: enrichmentStatus(pageProducts),
+    enrichment: session.enrichment,
   });
 }
 
@@ -123,6 +122,7 @@ export function createSearch({ show, hideSuggestions }) {
         products,
         total: data.total,
         query: data.query,
+        enrichment: data.enrichment,
       };
       sessionKey = key;
 

@@ -17,9 +17,9 @@ export type Catalog = {
     sku: string;
     weight: number;
     dimensions: {
-      length: number;
       width: number;
       height: number;
+      depth: number;
     };
     warrantyInformation: string;
     reviews: {
@@ -103,7 +103,7 @@ export async function fetchOffers(ids: number[]): Promise<Offer[]> {
   }
 
   return ids.flatMap((id) => {
-    if (Math.random() < PER_OFFER_FAIL_RATE) return []
+    if (Math.random() < PER_OFFER_FAIL_RATE) return [];
     const offer = offers.get(id);
     return offer ? [offer] : [];
   });
