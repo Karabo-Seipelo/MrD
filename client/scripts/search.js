@@ -1,3 +1,5 @@
+import { enrichmentStatus } from "./enrichment.js";
+import { mergeProductOffers } from "./mergeOffers.js";
 import { paginate, sortByPrice } from "./sort.js";
 import {
   buildFetchParams,
@@ -27,22 +29,6 @@ function rememberSearch(key, data) {
 
 function fetchKey() {
   return buildFetchParams().toString();
-}
-
-function mergeProductOffers(previous, incoming) {
-  const prevById = new Map(previous.map((product) => [product.id, product]));
-  return incoming.map((product) => {
-    const prior = prevById.get(product.id);
-    if (!prior) return product;
-    return {
-      ...product,
-      price: product.price ?? prior.price,
-      availabilityStatus:
-        product.availabilityStatus ?? prior.availabilityStatus,
-      shippingInformation:
-        product.shippingInformation ?? prior.shippingInformation,
-    };
-  });
 }
 
 function applyView() {
@@ -118,15 +104,16 @@ export function createSearch({ show, hideSuggestions }) {
         ? mergeProductOffers(previousProducts, data.products)
         : data.products;
 
+      const enrichment = enrichmentStatus(products);
       session = {
         products,
         total: data.total,
         query: data.query,
-        enrichment: data.enrichment,
+        enrichment,
       };
       sessionKey = key;
 
-      if (data.enrichment === "ok") rememberSearch(key, session);
+      if (enrichment === "ok") rememberSearch(key, session);
 
       applyView();
       const ms = Math.round(performance.now() - started);
@@ -147,7 +134,42 @@ export function createSearch({ show, hideSuggestions }) {
     return search({ record });
   }
 
-  return { search, applyView, syncView };
+  async function retryProductOffer(productId) {
+    if (!session || !renderResults) return;
+
+    try {
+      const response = await fetch(
+        `/offers?ids=${encodeURIComponent(String(productId))}`,
+      );
+      const data = await response.json();
+      if (!response.ok) return;
+
+      const byId = new Map(
+        data.products.map((product) => [product.id, product]),
+      );
+      const products = session.products.map((product) => {
+        const patch = byId.get(product.id);
+        if (!patch) return product;
+        return mergeProductOffers([product], [patch])[0];
+      });
+
+      session = {
+        ...session,
+        products,
+        enrichment: enrichmentStatus(products),
+      };
+
+      if (session.enrichment === "ok" && sessionKey) {
+        rememberSearch(sessionKey, session);
+      }
+
+      applyView();
+    } catch {
+      /* keep current view */
+    }
+  }
+
+  return { search, applyView, syncView, retryProductOffer };
 }
 
 export function abortSearch() {

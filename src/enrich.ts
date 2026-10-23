@@ -14,9 +14,16 @@ export type EnrichOptions = {
   maxMs: number;
 };
 
-const DEFAULT_OPTIONS: EnrichOptions = {
-  maxAttempts: 3,
-  maxMs: 2500,
+function readIntEnv(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw == null || raw === "") return fallback;
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+}
+
+export const DEFAULT_ENRICH_OPTIONS: EnrichOptions = {
+  maxAttempts: readIntEnv("ENRICH_MAX_ATTEMPTS", 3),
+  maxMs: readIntEnv("ENRICH_MAX_MS", 2500),
 };
 
 export function isEnriched(product: EnrichedProduct): boolean {
@@ -26,7 +33,9 @@ export function isEnriched(product: EnrichedProduct): boolean {
 export function enrichmentStatus(products: EnrichedProduct[]): Enrichment {
   if (products.length === 0) return "ok";
   const enriched = products.filter(isEnriched).length;
-  return enriched === products.length ? "ok" : "partial";
+  if (enriched === products.length) return "ok";
+  if (enriched === 0) return "failed";
+  return "partial";
 }
 
 function joinProducts(
@@ -63,7 +72,7 @@ export async function enrichProductsWithRetry(
     return { products: [], enrichment: "ok", attempts: 0 };
   }
 
-  const { maxAttempts, maxMs } = { ...DEFAULT_OPTIONS, ...options };
+  const { maxAttempts, maxMs } = { ...DEFAULT_ENRICH_OPTIONS, ...options };
   const deadline = Date.now() + maxMs;
   const byId = new Map<number, Offer>();
   let attempts = 0;
@@ -72,7 +81,9 @@ export async function enrichProductsWithRetry(
     attempts++;
 
     const idsToFetch =
-      byId.size === 0 ? matches.map((product) => product.id) : missingIds(matches, byId);
+      byId.size === 0
+        ? matches.map((product) => product.id)
+        : missingIds(matches, byId);
 
     if (byId.size > 0 && idsToFetch.length === 0) {
       break;

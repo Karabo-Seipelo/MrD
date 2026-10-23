@@ -1,8 +1,10 @@
 # Product Search
 
-A small product search app. One Node process serves a static page from `client/` and a JSON API. The catalog is 40 local products in `data/catalog.json`; price, availability, and delivery live in `data/offers.json` (one row per product id). Search matches title, description, category, and brand. Results can be filtered by one category and sorted by price.
+A small product search app. One Node process serves a static page from `client/` and a JSON API. The catalog is 40 local products in `data/catalog.json`; price, availability, and delivery live in `data/offers.json` (one row per product id). Search matches title, description, category, brand, and **tags**. Results can be filtered by one category and sorted by price.
 
-Search reads the local catalog. `GET /products` enriches via an in-process upstream (`fetchOffers` over `offers.json`) with **up to 3 attempts or 2.5s** per request (retries wholesale failures and missing ids). Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
+Search reads the local catalog. `GET /products` enriches via an in-process upstream (`fetchOffers` over `offers.json`) with **up to 3 attempts or 2.5s** per request by default (override with `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS`). Retries cover wholesale failures and missing ids. Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`, with **`attempts`** counting upstream rounds. Non-`ok` responses include `Cache-Control: no-store`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
+
+The API returns at most **40** enriched hits per search (`limit` max **40**; the page fetches `limit=40` once). If more than 40 products match, only the first 40 in enriched sort order are available (see `SOLUTION.md`).
 
 ## Requirements
 
@@ -55,7 +57,7 @@ Query parameters:
 - `category` — one category name. Blank means no category filter.
 - `sort` — `asc` (default) or `desc`, by the enriched price. If enrichment fails, the hits stay in catalog order.
 - `page` — 1-based page number (default `1`).
-- `limit` — page size (default `10`, max `40`). `total` is the full hit count before paging.
+- `limit` — page size (default `10`, max `40`). `total` is the full hit count before paging. Values above `40` clamp to `40`.
 
 ```bash
 curl "http://localhost:3000/products"
@@ -74,11 +76,20 @@ Success:
   "page": 1,
   "limit": 10,
   "query": "mascara",
-  "enrichment": "ok"
+  "enrichment": "ok",
+  "attempts": 1
 }
 ```
 
-`enrichment` is `"ok"`, `"partial"`, or `"failed"`. On `"ok"`, every product includes `price`, `availabilityStatus`, and `shippingInformation`. On `"partial"`, only some rows include them. On `"failed"`, none do; catalog fields (`title`, `brand`, `category`, and the rest) remain. An empty match list skips the upstream and returns `enrichment: "ok"`. The browser cache stores only `"ok"` responses.
+`enrichment` is `"ok"`, `"partial"`, or `"failed"`. On `"ok"`, every product in the match set includes `price`, `availabilityStatus`, and `shippingInformation`. On `"partial"`, only some rows include them. On `"failed"`, none do; catalog fields (`title`, `brand`, `category`, and the rest) remain. An empty match list skips the upstream and returns `enrichment: "ok"`. The browser cache stores only fully enriched sessions (after merge). A JSON Schema lives in [`schemas/products-response.json`](schemas/products-response.json); [`openapi.yaml`](openapi.yaml) summarizes routes.
+
+### `GET /offers`
+
+Enrich one or more catalog ids (comma-separated `ids`). Uses the same retry budget as search. Per-card **Try again** on the page calls this endpoint for a single id.
+
+```bash
+curl "http://localhost:3000/offers?ids=1,2"
+```
 
 ### `GET /products/categories`
 
@@ -111,4 +122,4 @@ curl "http://localhost:3000/products/suggest?q=mas&limit=8"
 
 ## Page
 
-The page at `/` is a search form, category chips, and a price sort. A bare `/` leaves the list empty. A link with `q`, `category`, `sort`, or `page` restores the form and runs the search. The browser fetches once per `q`/`category` (`limit=40`), then applies **price sort and UI pagination (10 per page) in memory** — changing sort or Previous/Next does not call the API again. `sort` and `page` stay in the URL for sharing. Filter changes reset to page 1 and refetch. While `GET /products` is in flight the list shows one skeleton row. Each card shows the category above the name. When enrichment succeeds, the card shows the price, availability, and delivery time. When it fails, the card shows “Price unavailable” and a Try again button that runs the search again. A network error shows a retry panel and clears the list.
+The page at `/` is a search form, category chips, and a price sort. A bare `/` leaves the list empty. A link with `q`, `category`, `sort`, or `page` restores the form and runs the search. The browser fetches once per `q`/`category` (`limit=40`), then applies **price sort and UI pagination (5 per page) in memory** — changing sort or Previous/Next does not call the API again. `sort` and `page` stay in the URL for sharing. Filter changes reset to page 1 and refetch. Partial or failed enrichment shows a short banner with **Try search again** (full refetch with merge). While `GET /products` is in flight the list shows one skeleton row. Each card shows the category above the name. When enrichment succeeds, the card shows the price, availability, and delivery time. When a row is missing price, the card shows “Price unavailable” and **Try again** (`GET /offers?ids=` for that product). A network error shows a retry panel and clears the list.

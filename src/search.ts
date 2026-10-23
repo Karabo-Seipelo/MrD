@@ -7,22 +7,23 @@ export type Product = {
   tags?: string[];
 };
 
+function searchableText(product: Product): string {
+  return [
+    product.title,
+    product.description,
+    product.category,
+    product.brand ?? "",
+    ...(product.tags ?? []),
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 function searchProducts(products: Product[], query: string) {
   const q = query.trim().toLowerCase();
   if (!q) return products;
 
-  return products.filter((product) => {
-    const text = [
-      product.title,
-      product.description,
-      product.category,
-      product.brand ?? "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    return text.includes(q);
-  });
+  return products.filter((product) => searchableText(product).includes(q));
 }
 
 export function queryProducts(
@@ -94,16 +95,7 @@ export function suggestProducts(
   const out: string[] = [];
 
   for (const product of products) {
-    const text = [
-      product.title,
-      product.description,
-      product.category,
-      product.brand ?? "",
-    ]
-      .join(" ")
-      .toLowerCase();
-
-    if (!text.includes(q)) continue;
+    if (!searchableText(product).includes(q)) continue;
     if (seen.has(product.title)) continue;
     seen.add(product.title);
     out.push(product.title);

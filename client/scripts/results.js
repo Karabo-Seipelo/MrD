@@ -10,14 +10,25 @@ const list = document.querySelector(".result-list");
 const skeleton = document.querySelector("#skeleton");
 const result = document.querySelector("#result");
 const searchError = document.querySelector("#search-error");
+const enrichmentBanner = document.querySelector("#enrichment-banner");
 const status = document.querySelector(".results__status");
 
 let retry = () => {};
+let retryProduct = () => {};
 let onPageChange = () => {};
 let lastPage = 1;
 
 list.addEventListener("click", (event) => {
-  if (event.target.closest(".result__retry")) retry();
+  const button = event.target.closest(".result__retry");
+  if (!button) return;
+
+  const rawId = button.dataset.productId;
+  const productId = rawId ? Number.parseInt(rawId, 10) : NaN;
+  if (Number.isFinite(productId) && productId > 0) {
+    retryProduct(productId);
+    return;
+  }
+  retry();
 });
 
 pagerPrev.addEventListener("click", () => onPageChange(lastPage - 1));
@@ -43,8 +54,28 @@ function updatePager(data) {
   pager.hidden = true;
 }
 
+function renderEnrichmentBanner(enrichment, onRetry) {
+  if (enrichment !== "partial" && enrichment !== "failed") {
+    status.replaceChildren();
+    return;
+  }
+
+  const node = enrichmentBanner.content.cloneNode(true);
+  const text = node.querySelector(".enrichment-banner__text");
+  text.textContent =
+    enrichment === "failed"
+      ? "Prices could not be loaded for these results. Try again or refresh individual items."
+      : "Some prices are still missing. Try again to load the rest.";
+
+  node
+    .querySelector(".enrichment-banner__retry")
+    .addEventListener("click", onRetry);
+  status.replaceChildren(node);
+}
+
 export function show(state, data, handlers = {}) {
   retry = handlers.onRetry ?? (() => {});
+  retryProduct = handlers.onRetryProduct ?? retry;
   onPageChange = handlers.onPageChange ?? (() => {});
 
   if (state === "loading") {
@@ -71,18 +102,19 @@ export function show(state, data, handlers = {}) {
 
   summary.textContent = `${data.total} results`;
   updatePager(data);
-  list.replaceChildren(
-    ...data.products.map((product) => card(product, retry)),
-  );
-  status.replaceChildren();
+  list.replaceChildren(...data.products.map((product) => card(product)));
+  renderEnrichmentBanner(data.enrichment, retry);
 }
 
-function card(product, onRetry) {
+function card(product) {
   const node = result.content.cloneNode(true);
   const offer = node.querySelector(".result__offer");
   const price = node.querySelector("[data-price]");
   const badge = node.querySelector(".badge");
   const eta = node.querySelector(".result__eta");
+  const retryButton = node.querySelector(".result__retry");
+
+  retryButton.dataset.productId = String(product.id);
 
   node.querySelector(".result__category").textContent = product.category ?? "";
   node.querySelector(".result__name").textContent = product.title;

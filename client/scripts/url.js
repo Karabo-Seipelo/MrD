@@ -3,7 +3,7 @@ import { selectedCategory, setSelectedCategory } from "./categories.js";
 const query = document.querySelector("#q");
 const sort = document.querySelector("#sort");
 
-export const DEFAULT_LIMIT = 10;
+export const DEFAULT_LIMIT = 5;
 export const FETCH_LIMIT = 40;
 
 let page = 1;

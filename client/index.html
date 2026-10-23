@@ -103,10 +103,7 @@
         <nav class="pager" aria-label="Results pages" hidden>
           <p class="pager__range"></p>
           <div class="pager__actions">
-            <button
-              type="button"
-              class="button button--secondary pager__prev"
-            >
+            <button type="button" class="button button--secondary pager__prev">
               Previous
             </button>
             <button type="button" class="button button--secondary pager__next">
@@ -115,6 +112,18 @@
           </div>
         </nav>
       </div>
+
+      <template id="enrichment-banner">
+        <section class="enrichment-banner" role="status" aria-live="polite">
+          <p class="enrichment-banner__text"></p>
+          <button
+            type="button"
+            class="button button--secondary enrichment-banner__retry"
+          >
+            Try search again
+          </button>
+        </section>
+      </template>
 
       <template id="search-error">
         <section class="search-error" aria-labelledby="search-error-title">
@@ -142,6 +151,7 @@
             <button
               class="button button--secondary result__retry"
               type="button"
+              data-product-id=""
             >
               Try again
             </button>

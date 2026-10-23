@@ -7,10 +7,11 @@ import { createSearch, abortSearch } from "./search.js";
 const form = document.querySelector(".search");
 const sort = document.querySelector("#sort");
 
-const { search, applyView, syncView } = createSearch({
+const { search, applyView, syncView, retryProductOffer } = createSearch({
   show: (state, data) =>
     show(state, data, {
       onRetry: () => search({ refetch: true }),
+      onRetryProduct: (productId) => retryProductOffer(productId),
       onPageChange: (page) => {
         setPage(page);
         writeUrl();

@@ -1,7 +1,4 @@
-import {
-  enrichProductsWithRetry,
-  type EnrichedProduct,
-} from "./enrich.js";
+import { enrichProductsWithRetry, type EnrichedProduct } from "./enrich.js";
 import type { Product } from "./search.js";
 import type { Offer } from "./upstream.js";
 
@@ -36,11 +33,7 @@ describe("enrichProductsWithRetry", () => {
       .mockRejectedValueOnce(new Error("upstream offers failed"))
       .mockImplementation(async (ids: number[]) => ids.map(offer));
 
-    const result = await enrichProductsWithRetry(
-      matches,
-      "asc",
-      fetchOffers,
-    );
+    const result = await enrichProductsWithRetry(matches, "asc", fetchOffers);
 
     expect(fetchOffers).toHaveBeenCalledTimes(2);
     expect(result.enrichment).toBe("ok");
@@ -56,11 +49,7 @@ describe("enrichProductsWithRetry", () => {
       .mockResolvedValueOnce([offer(1)])
       .mockImplementation(async (ids: number[]) => ids.map(offer));
 
-    const result = await enrichProductsWithRetry(
-      matches,
-      "asc",
-      fetchOffers,
-    );
+    const result = await enrichProductsWithRetry(matches, "asc", fetchOffers);
 
     expect(fetchOffers).toHaveBeenCalledTimes(2);
     expect(fetchOffers.mock.calls[1][0]).toEqual([2]);
@@ -72,12 +61,10 @@ describe("enrichProductsWithRetry", () => {
       .fn()
       .mockRejectedValue(new Error("upstream offers failed"));
 
-    const result = await enrichProductsWithRetry(
-      matches,
-      "asc",
-      fetchOffers,
-      { maxAttempts: 3, maxMs: 2500 },
-    );
+    const result = await enrichProductsWithRetry(matches, "asc", fetchOffers, {
+      maxAttempts: 3,
+      maxMs: 2500,
+    });
 
     expect(fetchOffers).toHaveBeenCalledTimes(3);
     expect(result.enrichment).toBe("failed");

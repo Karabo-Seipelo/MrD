@@ -70,12 +70,12 @@ describe("Products router", () => {
     expect(page1.body.total).toBe(5);
     expect(page1.body.page).toBe(1);
     expect(page1.body.limit).toBe(2);
-    expect(page1.body.products.map((product: { id: number }) => product.id)).toEqual(
-      [5, 4],
-    );
-    expect(page3.body.products.map((product: { id: number }) => product.id)).toEqual(
-      [1],
-    );
+    expect(
+      page1.body.products.map((product: { id: number }) => product.id),
+    ).toEqual([5, 4]);
+    expect(
+      page3.body.products.map((product: { id: number }) => product.id),
+    ).toEqual([1]);
   });
 
   it("paginates on wholesale upstream failure", async () => {
@@ -155,6 +155,29 @@ describe("Products router", () => {
     }
   });
 
+  it("second fetchOffers call requests only missing ids after partial response", async () => {
+    vi.mocked(fetchOffers)
+      .mockResolvedValueOnce([
+        {
+          id: 1,
+          price: 30,
+          availabilityStatus: "In Stock",
+          shippingInformation: "Delivery 25-35 min",
+        },
+      ])
+      .mockImplementation(async (ids: number[]) => offersFor(ids, () => 30));
+
+    await request(app).get("/products").query({
+      category: "beauty",
+      sort: "asc",
+    });
+
+    expect(fetchOffers).toHaveBeenCalledTimes(2);
+    const calls = vi.mocked(fetchOffers).mock.calls;
+    expect([...calls[0][0]].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
+    expect(calls[1][0]).toEqual([2, 3, 4, 5]);
+  });
+
   it("retries upstream and enriches after an initial failure", async () => {
     vi.mocked(fetchOffers)
       .mockRejectedValueOnce(new Error("upstream offers failed"))
@@ -196,6 +219,19 @@ describe("Products router", () => {
     const response = await request(app).get("/products/categories");
     expect(response.status).toBe(200);
     expect(response.body.categories).toEqual(["beauty", "groceries"]);
+  });
+
+  it("enriches a subset via GET /offers", async () => {
+    vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
+      offersFor(ids, () => 42),
+    );
+
+    const response = await request(app).get("/offers").query({ ids: "1,2" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.products).toHaveLength(2);
+    expect(response.body.enrichment).toBe("ok");
+    expect(response.body.products[0].price).toBe(42);
   });
 
   it("returns title suggestions without calling upstream", async () => {

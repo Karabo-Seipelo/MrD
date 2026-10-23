@@ -5,6 +5,7 @@ import {
   sortByPrice,
   type Product,
 } from "./search.js";
+import type { EnrichedProduct } from "./enrich.js";
 
 const products: Product[] = [
   {
@@ -14,7 +15,6 @@ const products: Product[] = [
     category: "beauty",
     brand: "Essence",
     tags: ["mascara"],
-    price: 12,
   },
   {
     id: 2,
@@ -23,7 +23,6 @@ const products: Product[] = [
     category: "beauty",
     brand: "Chic",
     tags: ["lipstick"],
-    price: 8,
   },
   {
     id: 3,
@@ -31,8 +30,13 @@ const products: Product[] = [
     description: "Fresh fruit",
     category: "groceries",
     tags: ["fruit"],
-    price: 2,
   },
+];
+
+const priced: EnrichedProduct[] = [
+  { ...products[0], price: 12 },
+  { ...products[1], price: 8 },
+  { ...products[2], price: 2 },
 ];
 
 describe("queryProducts", () => {
@@ -48,11 +52,28 @@ describe("queryProducts", () => {
     const results = queryProducts(products, "cream", "beauty");
     expect(results.map((product) => product.title)).toEqual(["Red Lipstick"]);
   });
+
+  it("matches a product by tag when the query is tag-only", () => {
+    const tagged: Product[] = [
+      {
+        id: 10,
+        title: "Plain Snack",
+        description: "A simple snack",
+        category: "groceries",
+        tags: ["unicorn"],
+      },
+    ];
+    const results = queryProducts(tagged, "unicorn", "");
+    expect(results.map((product) => product.title)).toEqual(["Plain Snack"]);
+  });
 });
 
 describe("parsePagination", () => {
   it("uses defaults for invalid input", () => {
-    expect(parsePagination(undefined, undefined)).toEqual({ page: 1, limit: 10 });
+    expect(parsePagination(undefined, undefined)).toEqual({
+      page: 1,
+      limit: 10,
+    });
     expect(parsePagination("x", "-1")).toEqual({ page: 1, limit: 10 });
   });
 
@@ -79,12 +100,12 @@ describe("paginate", () => {
 
 describe("sortByPrice", () => {
   it("sort by price from low to high", () => {
-    const results = sortByPrice(products, "asc");
+    const results = sortByPrice(priced, "asc");
     expect(results.map((product) => product.price)).toEqual([2, 8, 12]);
   });
 
   it("sort by price from high to low", () => {
-    const results = sortByPrice(products, "desc");
+    const results = sortByPrice(priced, "desc");
     expect(results.map((product) => product.price)).toEqual([12, 8, 2]);
   });
 });

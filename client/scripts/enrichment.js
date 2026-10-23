@@ -5,5 +5,7 @@ export function isEnriched(product) {
 export function enrichmentStatus(products) {
   if (products.length === 0) return "ok";
   const enriched = products.filter(isEnriched).length;
-  return enriched === products.length ? "ok" : "partial";
+  if (enriched === products.length) return "ok";
+  if (enriched === 0) return "failed";
+  return "partial";
 }
