@@ -139,7 +139,7 @@ describe("Products router", () => {
     expect(byId[2].availabilityStatus).toBeUndefined();
   });
 
-  it("flags partial enrichment when upstream returns no offers", async () => {
+  it("returns failed when upstream always returns no offers", async () => {
     vi.mocked(fetchOffers).mockResolvedValue([]);
 
     const response = await request(app).get("/products").query({
@@ -147,12 +147,28 @@ describe("Products router", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(response.body.enrichment).toBe("partial");
+    expect(response.body.enrichment).toBe("failed");
     expect(response.body.total).toBe(5);
     for (const product of response.body.products) {
       expect(product.price).toBeUndefined();
       expect(product.availabilityStatus).toBeUndefined();
     }
+  });
+
+  it("retries upstream and enriches after an initial failure", async () => {
+    vi.mocked(fetchOffers)
+      .mockRejectedValueOnce(new Error("upstream offers failed"))
+      .mockImplementation(async (ids: number[]) => offersFor(ids, () => 30));
+
+    const response = await request(app).get("/products").query({
+      q: "mascara",
+      category: "beauty",
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.enrichment).toBe("ok");
+    expect(fetchOffers).toHaveBeenCalledTimes(2);
+    expect(response.body.products[0].price).toBe(30);
   });
 
   it("returns the hits without price when the upstream fails", async () => {

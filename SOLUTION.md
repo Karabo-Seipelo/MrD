@@ -49,7 +49,7 @@ Express serves JSON under the same origin as the UI (`src/app.ts` mounts static 
 
 ### `GET /products`
 
-Main search endpoint. The route filters the in-memory catalog first, then calls `fetchOffers` for the matching ids.
+Main search endpoint. The route filters the in-memory catalog first, then enriches matches via [`enrichProductsWithRetry`](src/enrich.ts) (up to **3 attempts or 2.5s**).
 
 Query parameters:
 
@@ -63,9 +63,11 @@ The route enriches and sorts the **full** match set, then slices the window for 
 
 Response: `{ products, total, page, limit, query, enrichment }`. `enrichment` is `"ok"`, `"partial"`, or `"failed"`.
 
-On `"ok"`, every product **on this page** is fully enriched. On `"partial"`, the upstream call succeeded but at least one row on this page is missing commercial fields. On `"failed"`, the wholesale upstream throw ran and no row gets commercial fields. An empty match list does not call the upstream and returns `enrichment: "ok"`.
+On `"ok"`, every product in the **full match set** is fully enriched. On `"partial"`, at least one row is still missing commercial fields after retries. On `"failed"`, no offers were obtained (e.g. every upstream attempt threw or returned nothing). An empty match list does not call the upstream and returns `enrichment: "ok"`.
 
-The route logs each search to the server terminal, for example `search #3 200 412ms enrichment=ok q="cream"`. Wholesale and partial failures are still status `200`; the log line shows `enrichment=partial` or `enrichment=failed` as appropriate.
+Before responding, the server validates the joined list: wholesale upstream failures retry the batch; partial gaps retry **missing ids only**, until all rows are enriched or the attempt/time budget is exhausted.
+
+The route logs each search to the server terminal, for example `search #3 200 890ms enrichment=ok attempts=2 q="cream"`. Responses are still status `200`; the log shows `enrichment` and `attempts`.
 
 ### `GET /products/categories`
 
@@ -87,7 +89,7 @@ Returns `{ status: "ok", timestamp }` where `timestamp` is the server time in IS
 
 The catalog is a local JSON file of 40 items in `data/catalog.json`, copied from the [DummyJSON](https://dummyjson.com/products) products resource. Search uses that file directly. Commercial fields live in a mirrored `data/offers.json` (`id`, `price`, `availabilityStatus`, `shippingInformation`). At startup the process loads both files, throws if product ids and offer ids do not match, and builds an in-memory offer map from `offers.json`.
 
-`fetchOffers` is that simulated upstream. It is an in-process function, not a second HTTP service. It waits 100–800 ms, throws about one time in five for a wholesale failure (`upstream offers failed`), and on success can omit individual ids at random (per-offer failure). One call covers every id in the result set. The route joins returned offers onto the matches by `id` and sets `enrichment` from how many rows were enriched. The cost of that single call is under Trade-offs.
+`fetchOffers` is that simulated upstream. It is an in-process function, not a second HTTP service. It waits 100–800 ms, throws about one time in five for a wholesale failure (`upstream offers failed`), and on success can omit individual ids at random (per-offer failure). The route may invoke it multiple times per search within the retry budget. The client **Try again** button still refetches after the server gives up.
 
 Search logic lives in pure functions in `src/search.ts` (filter, category, price sort, suggest titles) so Vitest can test without HTTP.
 
@@ -140,7 +142,7 @@ A new search clears the status area before showing the skeleton. When the browse
 
 **A failed offer lookup still returns the hits.** `GET /products` responds `200` with `enrichment: "failed"`. Price, availability, and delivery are omitted, and each card shows “Price unavailable” and Try again. The product names stay on screen, which matches showing those fields when the upstream has them. The status code itself stays `200`, so the failure shows up in `enrichment` and in the server log (`enrichment=failed`). That response is not cached, so Try again calls `fetchOffers` again.
 
-**One upstream call covers the whole result set.** `fetchOffers` loads price, availability, and delivery for matching ids in one round trip. A wholesale failure drops commercial fields on every row (`enrichment: "failed"`). Per-id omissions leave a mix of priced and unpriced cards (`enrichment: "partial"`). Neither partial nor failed responses are cached.
+**Bounded server retries before responding.** Up to three upstream attempts or 2.5 seconds per search reduce partial/failed responses; latency can increase when retries run. After the budget, partial or failed results are returned and the browser may Try again (with client-side offer merge on refetch).
 
 **Price is the only sort.** The brief asks for one sort, and gives popularity or price as the examples. The API and the select order by the enriched price, low to high or high to low. There is no popularity order. When enrichment fails there is no price, so the hits stay in catalog order.
 

@@ -1,33 +1,21 @@
 import { Router } from "express";
+import {
+  enrichProductsWithRetry,
+  type Enrichment,
+} from "../enrich.js";
 import { fetchOffers, listCategories, catalog } from "../upstream.js";
 import {
   paginate,
   parsePagination,
   queryProducts,
-  sortByPrice,
   suggestProducts,
   type Product,
 } from "../search.js";
 
+export type { EnrichedProduct, Enrichment } from "../enrich.js";
+export { isEnriched, enrichmentStatus } from "../enrich.js";
+
 export const productsRouter = Router();
-
-type EnrichedProduct = Product & {
-  price?: number;
-  availabilityStatus?: string;
-  shippingInformation?: string;
-};
-
-export type Enrichment = "ok" | "partial" | "failed";
-
-export function isEnriched(product: EnrichedProduct): boolean {
-  return product.price != null && Boolean(product.availabilityStatus);
-}
-
-export function enrichmentStatus(products: EnrichedProduct[]): Enrichment {
-  if (products.length === 0) return "ok";
-  const enriched = products.filter(isEnriched).length;
-  return enriched === products.length ? "ok" : "partial";
-}
 
 let searchCount = 0;
 
@@ -44,59 +32,45 @@ productsRouter.get("/products", async (req, res) => {
   const { page, limit } = parsePagination(req.query.page, req.query.limit);
   const matches = queryProducts(catalog.products as Product[], q, category);
   let enrichment: Enrichment = "ok";
+  let attempts = 0;
 
-  try {
-    if (matches.length === 0) {
-      res.json({
-        products: [],
-        total: 0,
-        page,
-        limit,
-        query: q,
-        enrichment,
-      });
-      return;
-    }
-
-    const offers = await fetchOffers(matches.map((product) => product.id));
-    const byId = new Map(offers.map((offer) => [offer.id, offer]));
-    const products = sortByPrice(
-      matches.map((product) => ({
-        ...product,
-        ...byId.get(product.id),
-      })),
-      sort,
-    );
-
-    const total = products.length;
-    const pageProducts = paginate(products, page, limit);
-    enrichment = enrichmentStatus(pageProducts);
-
+  if (matches.length === 0) {
     res.json({
-      products: pageProducts,
-      total,
+      products: [],
+      total: 0,
       page,
       limit,
       query: q,
       enrichment,
     });
-  } catch {
-    enrichment = "failed";
-    const total = matches.length;
-    res.json({
-      products: paginate(matches, page, limit),
-      total,
-      page,
-      limit,
-      query: q,
-      enrichment,
-    });
-  } finally {
     const ms = Math.round(performance.now() - started);
     console.log(
-      `search #${request} 200 ${ms}ms enrichment=${enrichment} q=${JSON.stringify(q)}`,
+      `search #${request} 200 ${ms}ms enrichment=${enrichment} attempts=${attempts} q=${JSON.stringify(q)}`,
     );
+    return;
   }
+
+  const enriched = await enrichProductsWithRetry(matches, sort, fetchOffers);
+  const { products } = enriched;
+  enrichment = enriched.enrichment;
+  attempts = enriched.attempts;
+
+  const total = products.length;
+  const pageProducts = paginate(products, page, limit);
+
+  res.json({
+    products: pageProducts,
+    total,
+    page,
+    limit,
+    query: q,
+    enrichment,
+  });
+
+  const ms = Math.round(performance.now() - started);
+  console.log(
+    `search #${request} 200 ${ms}ms enrichment=${enrichment} attempts=${attempts} q=${JSON.stringify(q)}`,
+  );
 });
 
 productsRouter.get("/products/categories", async (_req, res) => {

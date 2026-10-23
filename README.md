@@ -2,7 +2,7 @@
 
 A small product search app. One Node process serves a static page from `client/` and a JSON API. The catalog is 40 local products in `data/catalog.json`; price, availability, and delivery live in `data/offers.json` (one row per product id). Search matches title, description, category, and brand. Results can be filtered by one category and sorted by price.
 
-Search reads the local catalog. `GET /products` then calls an in-process upstream (`fetchOffers` over `offers.json`) for price, availability, and delivery: 100–800 ms, with a wholesale failure about one time in five and occasional per-id omissions. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
+Search reads the local catalog. `GET /products` enriches via an in-process upstream (`fetchOffers` over `offers.json`) with **up to 3 attempts or 2.5s** per request (retries wholesale failures and missing ids). Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
 
 ## Requirements
 
