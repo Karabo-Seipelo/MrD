@@ -1,9 +1,14 @@
-export function paginate(items, page, limit) {
+import type { EnrichedProduct, SortOrder } from "./types.js";
+
+export function paginate<T>(items: T[], page: number, limit: number): T[] {
   const start = (page - 1) * limit;
   return items.slice(start, start + limit);
 }
 
-export function sortByPrice(products, sort = "asc") {
+export function sortByPrice(
+  products: EnrichedProduct[],
+  sort: SortOrder = "asc",
+): EnrichedProduct[] {
   const direction = sort === "desc" ? -1 : 1;
 
   return [...products].sort((a, b) => {

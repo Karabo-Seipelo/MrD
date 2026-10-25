@@ -6,7 +6,7 @@ const money = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 2,
 });
 
-export function formatCurrency(value) {
+export function formatCurrency(value: number): string {
   return money
     .formatToParts(value)
     .filter((part) => part.type !== "literal")

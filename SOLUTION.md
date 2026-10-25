@@ -97,17 +97,17 @@ Search logic lives in pure functions in `src/search.ts` (filter, category, price
 
 ## Tests
 
-Vitest covers search, category filter, and both price orders directly in `search.test.ts`. `upstream.test.ts` checks that `fetchOffers` returns price and availability, and that it throws when the random check falls in the first fifth. Supertest hits the products router with a mocked `fetchOffers` (`routes/products.test.ts`): enriched price, sort by that price, a failed enrich that still returns hits without price, categories, and suggest without calling `fetchOffers`. `GET /health` is exercised once through the real app in `app.test.ts`. The page was also checked by hand on a phone. The local server was exposed with ngrok, and the layout was opened on a mobile device: search on top, category chips in the middle, and the sort select at the bottom. From 40rem the chips sit on the left and the sort select on the right.
+Vitest covers server search in `search.test.ts`, enrichment retry in `enrich.test.ts`, and the products router in `routes/products.test.ts`. Client-side logic lives in TypeScript under [`client/src/`](client/src/) with unit tests for sort, merge, enrichment, URL state, and [`searchSession.ts`](client/src/searchSession.ts) (cache, merge-on-refetch, offer patch). `upstream.test.ts` checks `fetchOffers`; `app.test.ts` hits `GET /health`. The page was also checked by hand on a phone.
 
 ## Tooling
 
-TypeScript strict mode is on. Scripts: `pnpm dev` (tsx watch), `pnpm test`, `pnpm build`, `pnpm start`. `PORT` defaults to `3000`; `.env.example` also documents `ENRICH_MAX_ATTEMPTS`, `ENRICH_MAX_MS`, and `OFFERS_RELOAD_MS`. The app does not load a `.env` file at runtime.
+TypeScript strict mode is on for the server (`src/`) and the browser (`client/src/` → `client/dist/` via `tsc`, no bundler). Scripts: `pnpm dev` (API watch + client `tsc -w`), `pnpm build:client`, `pnpm test`, `pnpm build`, `pnpm start`. `PORT` defaults to `3000`; `.env.example` also documents `ENRICH_MAX_ATTEMPTS`, `ENRICH_MAX_MS`, and `OFFERS_RELOAD_MS`. The app does not load a `.env` file at runtime.
 
 Manual requests live in `api-tester/` (`health.http`, `search.http`) for the REST Client extension.
 
 ## Page
 
-`client/index.html` and `client/styles.css` are static assets. Behaviour is a single module script: no bundler, no framework. Rows and panels come from `<template>` elements (`#result`, `#skeleton`, `#search-error`).
+`client/index.html` and `client/styles.css` are static assets. Behaviour is compiled from [`client/src/main.ts`](client/src/main.ts) to `client/dist/main.js` (ESM, no framework bundler). Rows and panels come from `<template>` elements (`#result`, `#skeleton`, `#search-error`).
 
 ### Initial load
 
@@ -118,7 +118,7 @@ Manual requests live in `api-tester/` (`health.http`, `search.http`) for the RES
 
 ### Search and filters
 
-Submitting the form or selecting a category runs `search()` and resets to page 1. The browser sends only `q`, `category`, and `limit=40` to `GET /products` (one upstream enrichment per filter). The enriched page window is kept in a session; **sort** and **UI paging** (5 rows per page via `DEFAULT_LIMIT` in [`client/scripts/url.js`](client/scripts/url.js)) run in [`client/scripts/sort.js`](client/scripts/sort.js) via `applyView()` without refetching. Changing sort or Previous/Next updates the URL and re-renders from session. Direct API clients can still pass `sort`, `page`, and `limit` for server-side behaviour.
+Submitting the form or selecting a category runs `search()` and resets to page 1. The browser sends only `q`, `category`, and `limit=40` to `GET /products` (one upstream enrichment per filter). The enriched page window is kept in a session; **sort** and **UI paging** (5 rows per page via `DEFAULT_LIMIT` in [`client/src/url.ts`](client/src/url.ts)) run in [`client/src/sort.ts`](client/src/sort.ts) via `applyView()` without refetching. Changing sort or Previous/Next updates the URL and re-renders from session. Direct API clients can still pass `sort`, `page`, and `limit` for server-side behaviour.
 
 After a refetch, `mergeProductOffers` preserves commercial fields from the prior session when the new response omits them; `session.enrichment` is **recomputed** from the merged rows (so a failed wholesale response plus merge can become `"ok"`). Only `"ok"` sessions are cached.
 
@@ -137,7 +137,7 @@ A new search clears the status area before showing the skeleton. When the browse
 
 ### Stretch behaviour on the page
 
-- **URL sync:** User-initiated searches update the address bar with `history.pushState` (`q`, `category`, `sort=desc`, `page` when set). Back/Forward restores the form and re-runs or clears results. Shared links restore state.
+- **URL sync:** Shareable query keys are `q`, `category`, `sort`, and `page` only ([`client/src/searchParams.ts`](client/src/searchParams.ts)). On load and on Back/Forward, the client parses the query, drops unknown params, validates `category` against names from `GET /products/categories`, and normalizes `sort`/`page`. If the address bar differs from the canonical form, `history.replaceState` fixes it without a new history entry. After search, `page` is clamped to the last page for the current result total (UI page size 5). User-initiated updates use `pushState` when the URL changes.
 - **Type-ahead:** Debounced input calls `GET /products/suggest`; prior suggest requests are aborted; titles are cached in a small in-memory map.
 - **Client cache:** Only sessions whose merged rows are fully enriched (`enrichment === "ok"`) are keyed by `q` + `category` (max 20 entries, LRU-style touch). Sort and page are not part of the key. Partial, failed, and network errors are not cached. Cache hits log `search cache hit` in the browser console.
 - **Instrumentation:** Browser console logs `search {status} {ms}ms` per fetch; server logs as above in the `pnpm dev` terminal.

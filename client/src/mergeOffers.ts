@@ -1,4 +1,9 @@
-export function mergeProductOffers(previous, incoming) {
+import type { EnrichedProduct } from "./types.js";
+
+export function mergeProductOffers(
+  previous: EnrichedProduct[],
+  incoming: EnrichedProduct[],
+): EnrichedProduct[] {
   const prevById = new Map(previous.map((product) => [product.id, product]));
   return incoming.map((product) => {
     const prior = prevById.get(product.id);

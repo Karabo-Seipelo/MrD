@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Product Search" />
     <meta name="keywords" content="Product Search" />
-    <link rel="stylesheet" href="./styles.css?v7" />
+    <link rel="stylesheet" href="./styles.css?v8" />
   </head>
   <body>
     <header class="site-header">
@@ -125,6 +125,13 @@
         </section>
       </template>
 
+      <template id="search-empty">
+        <p class="search-empty" role="status">
+          No products match your search. Try different words or clear a category
+          filter.
+        </p>
+      </template>
+
       <template id="search-error">
         <section class="search-error" aria-labelledby="search-error-title">
           <h2 class="search-error__title" id="search-error-title">
@@ -200,6 +207,6 @@
       <ul class="result-list"></ul>
     </main>
 
-    <script type="module" src="./scripts/main.js"></script>
+    <script type="module" src="./dist/main.js"></script>
   </body>
 </html>

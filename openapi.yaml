@@ -38,7 +38,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: schemas/products-response.json
+                $ref: "#/components/schemas/ProductsSearchResponse"
   /offers:
     get:
       summary: Enrich specific product ids
@@ -75,3 +75,58 @@ paths:
       responses:
         "200":
           description: Suggestion titles
+components:
+  schemas:
+    ProductsSearchResponse:
+      type: object
+      required:
+        - products
+        - total
+        - page
+        - limit
+        - query
+        - enrichment
+        - attempts
+      properties:
+        products:
+          type: array
+          items:
+            $ref: "#/components/schemas/EnrichedProduct"
+        total:
+          type: integer
+          minimum: 0
+        page:
+          type: integer
+          minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 40
+        query:
+          type: string
+        enrichment:
+          type: string
+          enum: [ok, partial, failed]
+        attempts:
+          type: integer
+          minimum: 0
+    CatalogProduct:
+      type: object
+      required: [id, title, description, category]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        category: { type: string }
+        brand: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+    EnrichedProduct:
+      allOf:
+        - $ref: "#/components/schemas/CatalogProduct"
+        - type: object
+          properties:
+            price: { type: number }
+            availabilityStatus: { type: string }
+            shippingInformation: { type: string }

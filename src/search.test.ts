@@ -3,6 +3,7 @@ import {
   parsePagination,
   queryProducts,
   sortByPrice,
+  suggestProducts,
   type Product,
 } from "./search.js";
 import type { EnrichedProduct } from "./enrich.js";
@@ -95,6 +96,21 @@ describe("paginate", () => {
 
   it("returns an empty array beyond the end", () => {
     expect(paginate(items, 10, 2)).toEqual([]);
+  });
+});
+
+describe("suggestProducts", () => {
+  it("includes titles matched by tag-only query", () => {
+    const tagged: Product[] = [
+      {
+        id: 10,
+        title: "Plain Snack",
+        description: "A simple snack",
+        category: "groceries",
+        tags: ["unicorn"],
+      },
+    ];
+    expect(suggestProducts(tagged, "unicorn", 8)).toEqual(["Plain Snack"]);
   });
 });
 

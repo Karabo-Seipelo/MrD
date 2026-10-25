@@ -18,7 +18,14 @@ pnpm install
 pnpm dev
 ```
 
-`npm install` and `npm run dev` work the same way. The server listens on port **3000** unless `PORT` is set. Open [http://localhost:3000](http://localhost:3000).
+`npm install` and `npm run dev` work the same way. **`pnpm dev`** runs **`predev`** first (`pnpm build:client`) so [`client/dist/main.js`](client/dist/main.js) exists, then the API (tsx watch) and client `tsc -w`. The server listens on port **3000** unless `PORT` is set. Open [http://localhost:3000](http://localhost:3000).
+
+### Git hooks and CI
+
+- **Husky** (after `pnpm install`): [`.husky/pre-commit`](.husky/pre-commit) runs **`pnpm format:check`** only.
+- **GitHub Actions** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): `pnpm build`, `pnpm test`, `pnpm typecheck`, `pnpm format:check`.
+
+Run `pnpm test` and `pnpm typecheck` locally before pushing if you want the same coverage as CI.
 
 Copy `.env.example` to `.env` if you want a different port. The app reads `PORT` from the environment; it does not load `.env` itself.
 
@@ -28,12 +35,13 @@ PORT=3001 pnpm dev
 
 Other scripts:
 
-| Script       | What it does                                 |
-| ------------ | -------------------------------------------- |
-| `pnpm dev`   | Start with `tsx watch`                       |
-| `pnpm test`  | Run Vitest once                              |
-| `pnpm build` | Compile TypeScript to `dist/`                |
-| `pnpm start` | Run the compiled server (`pnpm build` first) |
+| Script              | What it does                                 |
+| ------------------- | -------------------------------------------- |
+| `pnpm dev`          | API watch + client `tsc -w` → `client/dist/` |
+| `pnpm build:client` | Emit browser ESM to `client/dist/`           |
+| `pnpm test`         | Vitest (server + `client/src` unit tests)    |
+| `pnpm build`        | Server `dist/` + `client/dist/`              |
+| `pnpm start`        | Run compiled server (`pnpm build` first)     |
 
 ## API
 
@@ -59,6 +67,8 @@ Query parameters:
 - `page` — 1-based page number (default `1`).
 - `limit` — page size (default `10`, max `40`). `total` is the full hit count before paging. Values above `40` clamp to `40`.
 
+**Server vs browser paging:** API clients can pass `page` and `limit` on each `GET /products` call; the server enriches the full match set, sorts, then returns one page. The **web UI** instead requests **`limit=40` once** per filter, keeps that window in memory, and paginates **5 rows per page** in the browser (sort changes do not refetch). If `total` exceeds the loaded window, the UI summary notes that only the first 40 matches are available.
+
 ```bash
 curl "http://localhost:3000/products"
 curl "http://localhost:3000/products?q=mascara"
@@ -81,7 +91,7 @@ Success:
 }
 ```
 
-`enrichment` is `"ok"`, `"partial"`, or `"failed"`. On `"ok"`, every product in the match set includes `price`, `availabilityStatus`, and `shippingInformation`. On `"partial"`, only some rows include them. On `"failed"`, none do; catalog fields (`title`, `brand`, `category`, and the rest) remain. An empty match list skips the upstream and returns `enrichment: "ok"`. The browser cache stores only fully enriched sessions (after merge). A JSON Schema lives in [`schemas/products-response.json`](schemas/products-response.json); [`openapi.yaml`](openapi.yaml) summarizes routes.
+`enrichment` is `"ok"`, `"partial"`, or `"failed"`. On `"ok"`, every product in the match set includes `price`, `availabilityStatus`, and `shippingInformation`. On `"partial"`, only some rows include them. On `"failed"`, none do; catalog fields (`title`, `brand`, `category`, and the rest) remain. An empty match list skips the upstream and returns `enrichment: "ok"`. The browser cache stores only fully enriched sessions (after merge). A JSON Schema lives in [`schemas/products-response.json`](schemas/products-response.json); [`openapi.yaml`](openapi.yaml) embeds the same response shape for OpenAPI viewers.
 
 ### `GET /offers`
 

@@ -228,22 +228,58 @@ h1 {
 }
 
 .sort__control {
+  position: relative;
   display: flex;
+  width: 100%;
+}
+
+.sort__control::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid var(--color-muted);
+  border-bottom: 2px solid var(--color-muted);
+  pointer-events: none;
+  transform: translateY(-70%) rotate(45deg);
 }
 
 .sort__select {
   width: 100%;
   height: var(--control-h);
-  padding: 0 var(--control-px);
+  padding: 0 2.25rem 0 var(--control-px);
   font: inherit;
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
   color: var(--color-ink);
+  cursor: pointer;
   background: var(--color-surface);
   border: 1px solid var(--color-border-input);
   border-radius: var(--radius-md);
+  appearance: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
 }
+
+.sort__select:hover {
+  border-color: var(--color-muted);
+}
+
 .sort__select:focus-visible {
   border-color: var(--color-ink);
+  box-shadow: 0 0 0 3px rgb(69 69 69 / 12%);
+  outline: none;
+}
+
+.sort__select option {
+  padding: 0.5rem var(--control-px);
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  color: var(--color-ink);
+  background-color: var(--color-surface);
 }
 
 .button {
@@ -436,6 +472,12 @@ h1 {
 
 .results__status:not(:empty) {
   margin-bottom: var(--space-3);
+}
+
+.search-empty {
+  margin: var(--space-4) 0;
+  font-size: var(--text-sm);
+  color: var(--color-muted);
 }
 
 .enrichment-banner {
@@ -708,8 +750,13 @@ h1 {
     gap: var(--space-2);
   }
 
+  .sort__control {
+    width: auto;
+  }
+
   .sort__select {
     width: auto;
+    min-width: 12.5rem;
   }
 
   .site-header__inner {
