@@ -56,12 +56,14 @@ PORT=3001 pnpm dev
 
 Other scripts:
 
-| Script       | What it does                                     |
-| ------------ | ------------------------------------------------ |
-| `pnpm dev`   | API watch + web `tsc -w`                         |
-| `pnpm build` | Turbo: `@mrd/shared`, `@mrd/web`, `@mrd/api`     |
-| `pnpm test`  | Turbo: API + web unit tests                      |
-| `pnpm start` | `node apps/api/dist/index.js` after `pnpm build` |
+| Script         | What it does                                     |
+| -------------- | ------------------------------------------------ |
+| `pnpm dev`     | API watch + web `tsc -w`                         |
+| `pnpm build`   | Turbo: `@mrd/shared`, `@mrd/web`, `@mrd/api`     |
+| `pnpm test`    | Turbo: API + web unit tests                      |
+| `pnpm start`   | `node apps/api/dist/index.js` after `pnpm build` |
+| `pnpm db:seed` | Seed Postgres from `apps/api/data/*.json`        |
+| `pnpm db:ping` | Check `DATABASE_URL` connectivity                |
 
 ## API
 
