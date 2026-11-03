@@ -1,15 +1,15 @@
 # Solution
 
-This note explains how the product search app works: the HTTP API, the simulated upstream, the static page in `apps/web/`, and the main design choices.
+This note explains how the product search app works: the HTTP API, Postgres-backed catalog, the simulated upstream, the static page in `apps/web/`, and the main design choices.
 
 ## Main flow
 
-One Node process serves the static UI and the JSON API. A typical product search (after the user submits or changes a filter) looks like this:
+One Node process ([`apps/api`](apps/api)) serves the static UI and the JSON API. At startup [`initUpstream`](apps/api/src/upstream.ts) loads the catalog and offers from Postgres into memory. A typical product search (after the user submits or changes a filter) looks like this:
 
 ```mermaid
 sequenceDiagram
   participant User
-  participant Page as client/search.js
+  participant Page as apps/web search
   participant API as productsRouter
   participant Enrich as enrichProductsWithRetry
   participant Upstream as fetchOffers
@@ -39,15 +39,24 @@ sequenceDiagram
   Enrich-->>Page: patch session merge applyView
 ```
 
-Categories and suggest read the in-memory catalog without calling `fetchOffers`. Only `GET /products` pays the simulated upstream delay and failure rate, and only when the local search has at least one hit.
+Categories and suggest read the in-memory catalog without calling `fetchOffers`. Only `GET /products` and `GET /offers` pay the simulated upstream delay and failure rate, and product search pays it only when the local search has at least one hit.
+
+## Layout
+
+| Package       | Path              | Role                                              |
+| ------------- | ----------------- | ------------------------------------------------- |
+| `@mrd/api`    | `apps/api`        | Express API, enrichment, in-process upstream      |
+| `@mrd/web`    | `apps/web`        | Static page; TypeScript compiled to `dist/`       |
+| `@mrd/shared` | `packages/shared` | Shared types (`Enrichment`)                       |
+| `@mrd/db`     | `packages/db`     | Postgres pool, parameterized queries, seed script |
+
+Express ([`apps/api/src/app.ts`](apps/api/src/app.ts)) serves [`apps/web`](apps/web) and mounts `productsRouter`. Search logic is pure functions in [`apps/api/src/search.ts`](apps/api/src/search.ts).
 
 ## HTTP API
 
-Express serves JSON under the same origin as the UI (`apps/api/src/app.ts` mounts static `apps/web/` and `productsRouter`).
-
 ### `GET /products`
 
-Main search endpoint. The route filters the in-memory catalog first, then enriches matches via [`enrichProductsWithRetry`](src/enrich.ts) (up to **3 attempts or 2.5s**).
+Main search endpoint. The route filters the in-memory catalog first, then enriches matches via [`enrichProductsWithRetry`](apps/api/src/enrich.ts) (up to **3 attempts or 2.5s**).
 
 Query parameters:
 
@@ -69,7 +78,7 @@ The route logs each search to the server terminal, for example `search #3 200 89
 
 ### `GET /offers`
 
-Query `ids` (comma-separated catalog ids). Runs the same enrichment retry helper for that subset only. Used by per-card **Try again** on the page (`GET /offers?ids=12`). Returns `{ products, enrichment, attempts }`.
+Query `ids` (comma-separated catalog ids). Runs the same enrichment retry helper for that subset only. Used by per-card **Try again** on the page (`GET /offers?ids=12`). Returns `{ products, enrichment, attempts }`. Missing `ids` is `400`.
 
 ### `GET /products/categories`
 
@@ -89,25 +98,27 @@ Returns `{ status: "ok", timestamp }` where `timestamp` is the server time in IS
 
 ## Catalog and upstream
 
-The catalog is a local JSON file of 40 items in `data/catalog.json`, copied from the [DummyJSON](https://dummyjson.com/products) products resource. Search uses that file directly. Commercial fields live in a mirrored `data/offers.json` (`id`, `price`, `availabilityStatus`, `shippingInformation`). At startup the process loads both files, throws if product ids and offer ids do not match, and builds an in-memory offer map from `offers.json`. When `OFFERS_RELOAD_MS` is set to a positive number, `fetchOffers` reloads `offers.json` after that interval so long-running processes can pick up file changes without a restart.
+The seed source is 40 items copied from the [DummyJSON](https://dummyjson.com/products) products resource, stored in [`apps/api/data/catalog.json`](apps/api/data/catalog.json). Commercial fields live in a mirrored [`apps/api/data/offers.json`](apps/api/data/offers.json) (`id`, `price`, `availabilityStatus`, `shippingInformation`).
 
-`fetchOffers` is that simulated upstream. It is an in-process function, not a second HTTP service. It waits 100–800 ms, throws about one time in five for a wholesale failure (`upstream offers failed`), and on success can omit individual ids at random (per-offer failure). The route may invoke it multiple times per search within the retry budget. The client **Try again** button still refetches after the server gives up.
+`pnpm db:seed` ([`packages/db/scripts/seed.ts`](packages/db/scripts/seed.ts)) truncates `public.products` and `public.offers`, then inserts those files. The schema is [`supabase/migrations/20260322220000_products_offers.sql`](supabase/migrations/20260322220000_products_offers.sql). Queries in [`packages/db/src/queries.ts`](packages/db/src/queries.ts) are parameterized.
 
-Search logic lives in pure functions in `src/search.ts` (filter, category, price sort, suggest titles) so Vitest can test without HTTP.
+At startup the API requires `USE_DATABASE=1` and `DATABASE_URL`. [`initUpstream`](apps/api/src/upstream.ts) loads every product and offer through `@mrd/db`, throws if product ids and offer ids do not match, and keeps both in memory. Search, categories, suggestions, and `fetchOffers` use that memory. Request handling does not read the JSON files or query Postgres again.
+
+`fetchOffers` is an in-process function, not a second HTTP service. It waits 100–800 ms, throws about one time in five for a wholesale failure (`upstream offers failed`), and on success can omit individual ids at random (per-offer failure, about 15%). The route may invoke it multiple times per search within the retry budget. The client **Try again** button still refetches after the server gives up.
 
 ## Tests
 
-Vitest covers server search in `search.test.ts`, enrichment retry in `enrich.test.ts`, and the products router in `routes/products.test.ts`. Client-side logic lives in TypeScript under [`client/src/`](client/src/) with unit tests for sort, merge, enrichment, URL state, and [`searchSession.ts`](client/src/searchSession.ts) (cache, merge-on-refetch, offer patch). `upstream.test.ts` checks `fetchOffers`; `app.test.ts` hits `GET /health`. The page was also checked by hand on a phone.
+Vitest covers API search in [`apps/api/src/search.test.ts`](apps/api/src/search.test.ts), enrichment retry in [`apps/api/src/enrich.test.ts`](apps/api/src/enrich.test.ts), the products router in [`apps/api/src/routes/products.test.ts`](apps/api/src/routes/products.test.ts), `fetchOffers` in [`apps/api/src/upstream.test.ts`](apps/api/src/upstream.test.ts), and `GET /health` in [`apps/api/src/app.test.ts`](apps/api/src/app.test.ts). Those API tests mock `@mrd/db` with [`apps/api/data/`](apps/api/data/) ([`apps/api/vitest.setup.ts`](apps/api/vitest.setup.ts)), so CI does not need Postgres. Web unit tests live under [`apps/web/src/`](apps/web/src/) (sort, merge, enrichment, URL state, and [`searchSession.ts`](apps/web/src/searchSession.ts)). `@mrd/db` has its own query tests. The page was also checked by hand on a phone.
 
 ## Tooling
 
-TypeScript strict mode is on for the server (`src/`) and the browser (`client/src/` → `client/dist/` via `tsc`, no bundler). Scripts: `pnpm dev` (API watch + client `tsc -w`), `pnpm build:client`, `pnpm test`, `pnpm build`, `pnpm start`. `PORT` defaults to `3000`; `.env.example` also documents `ENRICH_MAX_ATTEMPTS`, `ENRICH_MAX_MS`, and `OFFERS_RELOAD_MS`. The app does not load a `.env` file at runtime.
+pnpm workspace and Turborepo. TypeScript strict mode is on for the API and the browser (`apps/web/src/` → `apps/web/dist/` via `tsc`, no bundler). Scripts: `pnpm dev` (web build, then API watch and web `tsc -w`), `pnpm build`, `pnpm test`, `pnpm typecheck`, `pnpm start`, `pnpm db:seed`, `pnpm db:ping`. `PORT` defaults to `3000`. [`.env.example`](.env.example) documents `PORT`, `ENRICH_MAX_ATTEMPTS`, `ENRICH_MAX_MS`, `USE_DATABASE`, and `DATABASE_URL`. The app does not load a `.env` file at runtime.
 
 Manual requests live in `api-tester/` (`health.http`, `search.http`) for the REST Client extension.
 
 ## Page
 
-`client/index.html` and `client/styles.css` are static assets. Behaviour is compiled from [`client/src/main.ts`](client/src/main.ts) to `client/dist/main.js` (ESM, no framework bundler). Rows and panels come from `<template>` elements (`#result`, `#skeleton`, `#search-error`).
+[`apps/web/index.html`](apps/web/index.html) and [`apps/web/styles.css`](apps/web/styles.css) are static assets. Behaviour is compiled from [`apps/web/src/main.ts`](apps/web/src/main.ts) to `apps/web/dist/main.js` (ESM, no framework bundler). Rows and panels come from `<template>` elements (`#result`, `#skeleton`, `#search-error`).
 
 ### Initial load
 
@@ -118,7 +129,7 @@ Manual requests live in `api-tester/` (`health.http`, `search.http`) for the RES
 
 ### Search and filters
 
-Submitting the form or selecting a category runs `search()` and resets to page 1. The browser sends only `q`, `category`, and `limit=40` to `GET /products` (one upstream enrichment per filter). The enriched page window is kept in a session; **sort** and **UI paging** (5 rows per page via `DEFAULT_LIMIT` in [`client/src/url.ts`](client/src/url.ts)) run in [`client/src/sort.ts`](client/src/sort.ts) via `applyView()` without refetching. Changing sort or Previous/Next updates the URL and re-renders from session. Direct API clients can still pass `sort`, `page`, and `limit` for server-side behaviour.
+Submitting the form or selecting a category runs `search()` and resets to page 1. The browser sends only `q`, `category`, and `limit=40` to `GET /products` (one upstream enrichment per filter). The enriched page window is kept in a session; **sort** and **UI paging** (5 rows per page via `DEFAULT_LIMIT` in [`apps/web/src/url.ts`](apps/web/src/url.ts)) run in [`apps/web/src/sort.ts`](apps/web/src/sort.ts) via `applyView()` without refetching. Changing sort or Previous/Next updates the URL and re-renders from session. Direct API clients can still pass `sort`, `page`, and `limit` for server-side behaviour.
 
 After a refetch, `mergeProductOffers` preserves commercial fields from the prior session when the new response omits them; `session.enrichment` is **recomputed** from the merged rows (so a failed wholesale response plus merge can become `"ok"`). Only `"ok"` sessions are cached.
 
@@ -137,7 +148,7 @@ A new search clears the status area before showing the skeleton. When the browse
 
 ### Stretch behaviour on the page
 
-- **URL sync:** Shareable query keys are `q`, `category`, `sort`, and `page` only ([`client/src/searchParams.ts`](client/src/searchParams.ts)). On load and on Back/Forward, the client parses the query, drops unknown params, validates `category` against names from `GET /products/categories`, and normalizes `sort`/`page`. If the address bar differs from the canonical form, `history.replaceState` fixes it without a new history entry. After search, `page` is clamped to the last page for the current result total (UI page size 5). User-initiated updates use `pushState` when the URL changes.
+- **URL sync:** Shareable query keys are `q`, `category`, `sort`, and `page` only ([`apps/web/src/searchParams.ts`](apps/web/src/searchParams.ts)). On load and on Back/Forward, the client parses the query, drops unknown params, validates `category` against names from `GET /products/categories`, and normalizes `sort`/`page`. If the address bar differs from the canonical form, `history.replaceState` fixes it without a new history entry. After search, `page` is clamped to the last page for the current result total (UI page size 5). User-initiated updates use `pushState` when the URL changes.
 - **Type-ahead:** Debounced input calls `GET /products/suggest`; prior suggest requests are aborted; titles are cached in a small in-memory map.
 - **Client cache:** Only sessions whose merged rows are fully enriched (`enrichment === "ok"`) are keyed by `q` + `category` (max 20 entries, LRU-style touch). Sort and page are not part of the key. Partial, failed, and network errors are not cached. Cache hits log `search cache hit` in the browser console.
 - **Instrumentation:** Browser console logs `search {status} {ms}ms` per fetch; server logs as above in the `pnpm dev` terminal.
@@ -148,19 +159,22 @@ A new search clears the status area before showing the skeleton. When the browse
 
 **Bounded server retries before responding.** Configurable upstream attempts and time budget (defaults 3 / 2.5s) reduce partial/failed responses; latency can increase when retries run. After the budget, partial or failed results are returned and the browser may Try again (full refetch with merge, or per-card `/offers`).
 
+**Catalog is loaded once.** Postgres is the source of truth, but search filters the snapshot taken at startup. A reseed is invisible until the API process restarts. That keeps search and suggestions off the database on each keystroke.
+
 **Price is the only sort.** The brief asks for one sort, and gives popularity or price as the examples. The API and the select order by the enriched price, low to high or high to low. There is no popularity order. When enrichment fails there is no price, so the hits stay in catalog order.
 
 ## Design decisions (summary)
 
-| Topic                | Choice                                             | Why                                                                |
-| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------ |
-| Upstream             | In-process `fetchOffers`, delay and random failure | Live price and availability without a second service               |
-| Failed enrichment    | `200` with hits, commercial fields omitted         | Names stay on screen; each card can retry                          |
-| Suggest / categories | No `fetchOffers`                                   | Fast chips and dropdown; only product search pays upstream latency |
-| UI stack             | HTML templates + DOM script                        | Small surface area for the assignment; easy to run                 |
-| Concurrency          | `AbortController` on search and suggest            | Avoid stale results when the user types or changes filters quickly |
-| Skeleton count       | One row                                            | Reduces CLS when a query returns few cards                         |
-| Sort                 | Price only                                         | Meets “one sort” while giving asc/desc in the UI                   |
+| Topic                | Choice                                             | Why                                                                 |
+| -------------------- | -------------------------------------------------- | ------------------------------------------------------------------- |
+| Catalog              | Postgres at startup, then in memory                | Seed JSON stays off the request path; search stays local after init |
+| Upstream             | In-process `fetchOffers`, delay and random failure | Live price and availability without a second service                |
+| Failed enrichment    | `200` with hits, commercial fields omitted         | Names stay on screen; each card can retry                           |
+| Suggest / categories | No `fetchOffers`                                   | Fast chips and dropdown; only product search pays upstream latency  |
+| UI stack             | HTML templates + DOM script in `apps/web`          | Small surface area for the assignment; easy to run                  |
+| Concurrency          | `AbortController` on search and suggest            | Avoid stale results when the user types or changes filters quickly  |
+| Skeleton count       | One row                                            | Reduces CLS when a query returns few cards                          |
+| Sort                 | Price only                                         | Meets “one sort” while giving asc/desc in the UI                    |
 
 ## AI assistance
 

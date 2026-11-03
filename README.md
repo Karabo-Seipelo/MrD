@@ -9,6 +9,8 @@ A small product search app in a **pnpm + Turborepo** monorepo. One Node process 
 | `@mrd/shared` | `packages/shared` | Shared types (e.g. `Enrichment`)    |
 | `@mrd/db`     | `packages/db`     | Postgres pool, queries, seed script |
 
+How the process, database, and page fit together is in [ARCHITECTURE.md](ARCHITECTURE.md).
+
 Search reads the catalog from Postgres at startup. `GET /products` enriches via an in-process upstream (`fetchOffers`) with **up to 3 attempts or 2.5s** per request by default (override with `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS`). Retries cover wholesale failures and missing ids. Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`, with **`attempts`** counting upstream rounds. Non-`ok` responses include `Cache-Control: no-store`. Category names and type-ahead suggestions read the in-memory catalog loaded from the database and do not pay upstream delay.
 
 The API returns at most **40** enriched hits per search (`limit` max **40**; the page fetches `limit=40` once). If more than 40 products match, only the first 40 in enriched sort order are available (see `SOLUTION.md`).
@@ -28,7 +30,7 @@ The API returns at most **40** enriched hits per search (`limit` max **40**; the
    pnpm db:seed
    ```
 
-2. Copy [`.env.example`](.env.example) to `.env` (or export `USE_DATABASE=1` and `DATABASE_URL`).
+2. Export `USE_DATABASE=1` and `DATABASE_URL`. The values for local Supabase are in [`.env.example`](.env.example). The process reads the environment only; it does not load a `.env` file.
 
 3. Install and run:
 
@@ -48,7 +50,7 @@ Unit tests mock `@mrd/db` and do not require Postgres in CI.
 
 Run `pnpm test` and `pnpm typecheck` locally before pushing if you want the same coverage as CI.
 
-Copy `.env.example` to `.env` if you want a different port. The app reads `PORT` from the environment; it does not load `.env` itself.
+`PORT` defaults to **3000**. Set it in the environment when you want another port:
 
 ```bash
 PORT=3001 pnpm dev
@@ -56,14 +58,30 @@ PORT=3001 pnpm dev
 
 Other scripts:
 
-| Script         | What it does                                     |
-| -------------- | ------------------------------------------------ |
-| `pnpm dev`     | API watch + web `tsc -w`                         |
-| `pnpm build`   | Turbo: `@mrd/shared`, `@mrd/web`, `@mrd/api`     |
-| `pnpm test`    | Turbo: API + web unit tests                      |
-| `pnpm start`   | `node apps/api/dist/index.js` after `pnpm build` |
-| `pnpm db:seed` | Seed Postgres from `apps/api/data/*.json`        |
-| `pnpm db:ping` | Check `DATABASE_URL` connectivity                |
+| Script         | What it does                                            |
+| -------------- | ------------------------------------------------------- |
+| `pnpm dev`     | API watch + web `tsc -w`                                |
+| `pnpm build`   | Turbo: `@mrd/db`, `@mrd/shared`, `@mrd/web`, `@mrd/api` |
+| `pnpm test`    | Turbo: API, web, and db unit tests                      |
+| `pnpm start`   | `node apps/api/dist/index.js` after `pnpm build`        |
+| `pnpm db:seed` | Seed Postgres from `apps/api/data/*.json`               |
+| `pnpm db:ping` | Check `DATABASE_URL` connectivity                       |
+
+## Production
+
+Build the workspace, then start the API. The Node process speaks HTTP only. Terminate TLS on a reverse proxy in front of `PORT`.
+
+```bash
+pnpm install
+pnpm build
+USE_DATABASE=1 DATABASE_URL=postgresql://… PORT=3000 pnpm start
+```
+
+`pnpm build` compiles `@mrd/db`, `@mrd/shared`, `@mrd/web` (`apps/web/dist/`), and `@mrd/api` (`apps/api/dist/`). `pnpm start` runs `node apps/api/dist/index.js`. Express serves static files from [`apps/web`](apps/web) (including `dist/main.js`), resolved from the API `dist/` directory, so those folders have to stay in the monorepo layout. Starting a copied `dist/index.js` on its own will not find the page.
+
+The database must already exist. Apply [`supabase/migrations/`](supabase/migrations/) (`supabase start` does this locally), then run `pnpm db:seed` once on a fresh database. Seed reads [`apps/api/data/`](apps/api/data/) and truncates `products` and `offers` before insert. Search does not read those JSON files at runtime.
+
+Set `USE_DATABASE=1` and `DATABASE_URL` on the process. `PORT` defaults to `3000`. `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS` default to `3` and `2500`. `GET /health` is the process check.
 
 ## API
 
