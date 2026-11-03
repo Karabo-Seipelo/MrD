@@ -1,6 +1,6 @@
 # Solution
 
-This note explains how the product search app works: the HTTP API, the simulated upstream, the static page in `client/`, and the main design choices.
+This note explains how the product search app works: the HTTP API, the simulated upstream, the static page in `apps/web/`, and the main design choices.
 
 ## Main flow
 
@@ -43,7 +43,7 @@ Categories and suggest read the in-memory catalog without calling `fetchOffers`.
 
 ## HTTP API
 
-Express serves JSON under the same origin as the UI (`src/app.ts` mounts static `client/` and `productsRouter`).
+Express serves JSON under the same origin as the UI (`apps/api/src/app.ts` mounts static `apps/web/` and `productsRouter`).
 
 ### `GET /products`
 

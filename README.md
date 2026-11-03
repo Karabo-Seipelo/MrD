@@ -1,6 +1,12 @@
 # Product Search
 
-A small product search app. One Node process serves a static page from `client/` and a JSON API. The catalog is 40 local products in `data/catalog.json`; price, availability, and delivery live in `data/offers.json` (one row per product id). Search matches title, description, category, brand, and **tags**. Results can be filtered by one category and sorted by price.
+A small product search app in a **pnpm + Turborepo** monorepo. One Node process ([`apps/api`](apps/api)) serves the static UI from [`apps/web`](apps/web) and a JSON API. The catalog is 40 local products in [`apps/api/data/catalog.json`](apps/api/data/catalog.json); price, availability, and delivery live in [`apps/api/data/offers.json`](apps/api/data/offers.json). Search matches title, description, category, brand, and **tags**. Results can be filtered by one category and sorted by price.
+
+| Package       | Path              | Role                                |
+| ------------- | ----------------- | ----------------------------------- |
+| `@mrd/api`    | `apps/api`        | Express API and Vitest server tests |
+| `@mrd/web`    | `apps/web`        | Static UI (`tsc` → `dist/`)         |
+| `@mrd/shared` | `packages/shared` | Shared types (e.g. `Enrichment`)    |
 
 Search reads the local catalog. `GET /products` enriches via an in-process upstream (`fetchOffers` over `offers.json`) with **up to 3 attempts or 2.5s** per request by default (override with `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS`). Retries cover wholesale failures and missing ids. Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`, with **`attempts`** counting upstream rounds. Non-`ok` responses include `Cache-Control: no-store`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
 
@@ -9,7 +15,7 @@ The API returns at most **40** enriched hits per search (`limit` max **40**; the
 ## Requirements
 
 - Node.js 22 or later
-- [pnpm](https://pnpm.io/) (or npm)
+- [pnpm](https://pnpm.io/) 9+
 
 ## Run locally
 
@@ -18,7 +24,7 @@ pnpm install
 pnpm dev
 ```
 
-`npm install` and `npm run dev` work the same way. **`pnpm dev`** runs **`predev`** first (`pnpm build:client`) so [`client/dist/main.js`](client/dist/main.js) exists, then the API (tsx watch) and client `tsc -w`. The server listens on port **3000** unless `PORT` is set. Open [http://localhost:3000](http://localhost:3000).
+**`pnpm dev`** runs **`predev`** first (`@mrd/web` build) so [`apps/web/dist/main.js`](apps/web/dist/main.js) exists, then API watch and web `tsc -w`. The server listens on port **3000** unless `PORT` is set. Open [http://localhost:3000](http://localhost:3000).
 
 ### Git hooks and CI
 
@@ -35,13 +41,12 @@ PORT=3001 pnpm dev
 
 Other scripts:
 
-| Script              | What it does                                 |
-| ------------------- | -------------------------------------------- |
-| `pnpm dev`          | API watch + client `tsc -w` → `client/dist/` |
-| `pnpm build:client` | Emit browser ESM to `client/dist/`           |
-| `pnpm test`         | Vitest (server + `client/src` unit tests)    |
-| `pnpm build`        | Server `dist/` + `client/dist/`              |
-| `pnpm start`        | Run compiled server (`pnpm build` first)     |
+| Script       | What it does                                     |
+| ------------ | ------------------------------------------------ |
+| `pnpm dev`   | API watch + web `tsc -w`                         |
+| `pnpm build` | Turbo: `@mrd/shared`, `@mrd/web`, `@mrd/api`     |
+| `pnpm test`  | Turbo: API + web unit tests                      |
+| `pnpm start` | `node apps/api/dist/index.js` after `pnpm build` |
 
 ## API
 
