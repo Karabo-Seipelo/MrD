@@ -25,6 +25,7 @@
     "node": ">=22"
   },
   "dependencies": {
+    "@mrd/shared": "workspace:*",
     "express": "^5.3.0"
   },
   "devDependencies": {

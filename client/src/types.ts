@@ -1,4 +1,5 @@
-export type Enrichment = "ok" | "partial" | "failed";
+export type { Enrichment } from "@mrd/shared";
+import type { Enrichment } from "@mrd/shared";
 
 export type SortOrder = "asc" | "desc";
 
