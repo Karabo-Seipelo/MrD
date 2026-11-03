@@ -1,14 +1,15 @@
 # Product Search
 
-A small product search app in a **pnpm + Turborepo** monorepo. One Node process ([`apps/api`](apps/api)) serves the static UI from [`apps/web`](apps/web) and a JSON API. The catalog is 40 local products in [`apps/api/data/catalog.json`](apps/api/data/catalog.json); price, availability, and delivery live in [`apps/api/data/offers.json`](apps/api/data/offers.json). Search matches title, description, category, brand, and **tags**. Results can be filtered by one category and sorted by price.
+A small product search app in a **pnpm + Turborepo** monorepo. One Node process ([`apps/api`](apps/api)) serves the static UI from [`apps/web`](apps/web) and a JSON API. Catalog and offers live in **Postgres** (local [Supabase](https://supabase.com/docs/guides/cli)); [`apps/api/data/`](apps/api/data/) JSON files are the **seed source** only. Search matches title, description, category, brand, and **tags**. Results can be filtered by one category and sorted by price.
 
 | Package       | Path              | Role                                |
 | ------------- | ----------------- | ----------------------------------- |
 | `@mrd/api`    | `apps/api`        | Express API and Vitest server tests |
 | `@mrd/web`    | `apps/web`        | Static UI (`tsc` → `dist/`)         |
 | `@mrd/shared` | `packages/shared` | Shared types (e.g. `Enrichment`)    |
+| `@mrd/db`     | `packages/db`     | Postgres pool, queries, seed script |
 
-Search reads the local catalog. `GET /products` enriches via an in-process upstream (`fetchOffers` over `offers.json`) with **up to 3 attempts or 2.5s** per request by default (override with `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS`). Retries cover wholesale failures and missing ids. Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`, with **`attempts`** counting upstream rounds. Non-`ok` responses include `Cache-Control: no-store`. Category names and type-ahead suggestions read the in-memory catalog and do not pay that delay.
+Search reads the catalog from Postgres at startup. `GET /products` enriches via an in-process upstream (`fetchOffers`) with **up to 3 attempts or 2.5s** per request by default (override with `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS`). Retries cover wholesale failures and missing ids. Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`, with **`attempts`** counting upstream rounds. Non-`ok` responses include `Cache-Control: no-store`. Category names and type-ahead suggestions read the in-memory catalog loaded from the database and do not pay upstream delay.
 
 The API returns at most **40** enriched hits per search (`limit` max **40**; the page fetches `limit=40` once). If more than 40 products match, only the first 40 in enriched sort order are available (see `SOLUTION.md`).
 
@@ -16,20 +17,34 @@ The API returns at most **40** enriched hits per search (`limit` max **40**; the
 
 - Node.js 22 or later
 - [pnpm](https://pnpm.io/) 9+
+- For local app run: [Docker](https://www.docker.com/) and [Supabase CLI](https://supabase.com/docs/guides/cli)
 
 ## Run locally
 
-```bash
-pnpm install
-pnpm dev
-```
+1. Start Supabase and seed:
+
+   ```bash
+   supabase start
+   pnpm db:seed
+   ```
+
+2. Copy [`.env.example`](.env.example) to `.env` (or export `USE_DATABASE=1` and `DATABASE_URL`).
+
+3. Install and run:
+
+   ```bash
+   pnpm install
+   pnpm dev
+   ```
 
 **`pnpm dev`** runs **`predev`** first (`@mrd/web` build) so [`apps/web/dist/main.js`](apps/web/dist/main.js) exists, then API watch and web `tsc -w`. The server listens on port **3000** unless `PORT` is set. Open [http://localhost:3000](http://localhost:3000).
+
+Unit tests mock `@mrd/db` and do not require Postgres in CI.
 
 ### Git hooks and CI
 
 - **Husky** (after `pnpm install`): [`.husky/pre-commit`](.husky/pre-commit) runs **`pnpm format:check`** only.
-- **GitHub Actions** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): `pnpm build`, `pnpm test`, `pnpm typecheck`, `pnpm format:check`.
+- **GitHub Actions** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)): `pnpm build`, `pnpm test`, `pnpm typecheck`, `pnpm format:check` (no Postgres in CI).
 
 Run `pnpm test` and `pnpm typecheck` locally before pushing if you want the same coverage as CI.
 
