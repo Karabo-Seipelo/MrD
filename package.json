@@ -12,6 +12,8 @@
     "start": "pnpm --filter @mrd/api start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "db:ping": "pnpm --filter @mrd/db ping",
+    "db:seed": "pnpm --filter @mrd/db seed",
     "prepare": "husky"
   },
   "keywords": [],
