@@ -3,6 +3,8 @@ dist
 client/dist
 .turbo
 **/dist
+supabase/.branches
+supabase/.temp
 .env
 wallaby.cjs
 .pnpm-store
