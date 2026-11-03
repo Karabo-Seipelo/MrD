@@ -2,17 +2,14 @@
   "name": "MrD",
   "version": "1.0.0",
   "private": true,
-  "description": "",
-  "main": "dist/index.js",
+  "description": "Product search monorepo",
   "scripts": {
     "predev": "pnpm --filter @mrd/web build",
-    "dev": "concurrently -k \"tsx watch src/index.ts\" \"pnpm --filter @mrd/web dev\"",
-    "build": "tsc -p tsconfig.build.json && pnpm --filter @mrd/web build",
-    "build:client": "pnpm --filter @mrd/web build",
-    "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit && pnpm --filter @mrd/web typecheck",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "dev": "concurrently -k \"pnpm --filter @mrd/api dev\" \"pnpm --filter @mrd/web dev\"",
+    "build": "turbo run build --filter=@mrd/*",
+    "test": "turbo run test --filter=@mrd/*",
+    "typecheck": "turbo run typecheck --filter=@mrd/*",
+    "start": "pnpm --filter @mrd/api start",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
@@ -24,23 +21,10 @@
   "engines": {
     "node": ">=22"
   },
-  "dependencies": {
-    "@mrd/shared": "workspace:*",
-    "express": "^5.3.0"
-  },
   "devDependencies": {
     "concurrently": "^9.2.1",
-    "@types/express": "^5.0.6",
-    "@types/node": "^22.20.5",
-    "@types/supertest": "^7.2.1",
     "husky": "^9.1.7",
     "prettier": "3.9.10",
-    "supertest": "^7.3.1",
-    "tsx": "^4.23.15",
-    "typescript": "^7.0.2",
-    "jsdom": "^26.1.0",
-    "vitest": "^5.0.4",
     "turbo": "2.11.10"
-  },
-  "type": "module"
+  }
 }
