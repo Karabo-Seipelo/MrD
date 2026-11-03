@@ -1,6 +1,8 @@
 node_modules
 dist
 client/dist
+.turbo
+**/dist
 .env
 wallaby.cjs
 .pnpm-store
