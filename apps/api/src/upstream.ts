@@ -1,6 +1,4 @@
-import { readFile } from "node:fs/promises";
-import path from "path";
-import { fileURLToPath } from "url";
+import { listAllOffers, listCatalogProducts } from "@mrd/db";
 import { type Product } from "./search.js";
 
 export type CatalogReview = {
@@ -37,12 +35,6 @@ export type Catalog = {
   products: CatalogProduct[];
 };
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-export const catalog = JSON.parse(
-  await readFile(path.join(__dirname, "../data/catalog.json"), "utf-8"),
-) as Catalog;
-
 export type Offer = {
   id: number;
   price: number;
@@ -50,9 +42,9 @@ export type Offer = {
   shippingInformation: string;
 };
 
-const offersFile = JSON.parse(
-  await readFile(path.join(__dirname, "../data/offers.json"), "utf-8"),
-) as { offers: Offer[] };
+let catalogProducts: CatalogProduct[] = [];
+let offers = new Map<number, Offer>();
+let initialized = false;
 
 function assertOfferIdsMatchProducts(
   products: Product[],
@@ -72,32 +64,33 @@ function assertOfferIdsMatchProducts(
   }
 }
 
-assertOfferIdsMatchProducts(catalog.products, offersFile.offers);
-
-let offersLoadedAt = Date.now();
-let offers = new Map<number, Offer>(
-  offersFile.offers.map((offer) => [offer.id, offer]),
-);
-
-const OFFERS_RELOAD_MS = (() => {
-  const raw = process.env.OFFERS_RELOAD_MS;
-  if (raw == null || raw === "") return 0;
-  const n = Number.parseInt(raw, 10);
-  return Number.isFinite(n) && n > 0 ? n : 0;
-})();
-
-async function reloadOffersIfStale(): Promise<void> {
-  if (OFFERS_RELOAD_MS === 0) return;
-  if (Date.now() - offersLoadedAt < OFFERS_RELOAD_MS) return;
-
-  const fresh = JSON.parse(
-    await readFile(path.join(__dirname, "../data/offers.json"), "utf-8"),
-  ) as { offers: Offer[] };
-
-  assertOfferIdsMatchProducts(catalog.products, fresh.offers);
-  offers = new Map(fresh.offers.map((offer) => [offer.id, offer]));
-  offersLoadedAt = Date.now();
+function setOffers(offerList: Offer[], products: Product[]): void {
+  assertOfferIdsMatchProducts(products, offerList);
+  offers = new Map(offerList.map((offer) => [offer.id, offer]));
 }
+
+export async function initUpstream(): Promise<void> {
+  if (initialized) return;
+
+  if (process.env.USE_DATABASE !== "1") {
+    throw new Error(
+      "USE_DATABASE=1 is required; seed Postgres with pnpm db:seed after supabase start",
+    );
+  }
+
+  catalogProducts = (await listCatalogProducts()) as CatalogProduct[];
+  setOffers(await listAllOffers(), catalogProducts);
+  initialized = true;
+}
+
+export const catalog: Catalog = {
+  get products() {
+    if (!initialized) {
+      throw new Error("upstream not initialized; call initUpstream() first");
+    }
+    return catalogProducts;
+  },
+};
 
 export function productsByIds(ids: number[]): CatalogProduct[] {
   const wanted = new Set(ids);
@@ -117,7 +110,6 @@ const WHOLESALE_FAIL_RATE = 0.2;
 const PER_OFFER_FAIL_RATE = 0.15;
 
 export async function fetchOffers(ids: number[]): Promise<Offer[]> {
-  await reloadOffersIfStale();
   const latency = 100 + Math.random() * 700;
   await wait(latency);
 
