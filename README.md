@@ -11,7 +11,9 @@ A small product search app in a **pnpm + Turborepo** monorepo. One Node process 
 
 How the process, database, and page fit together is in [ARCHITECTURE.md](ARCHITECTURE.md).
 
-Search reads the catalog from Postgres at startup. `GET /products` enriches via an in-process upstream (`fetchOffers`) with **up to 3 attempts or 2.5s** per request by default (override with `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS`). Retries cover wholesale failures and missing ids. Each attempt waits 100–800 ms and may fail wholesale or omit individual ids. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"`, with **`attempts`** counting upstream rounds. Non-`ok` responses include `Cache-Control: no-store`. Category names and type-ahead suggestions read the in-memory catalog loaded from the database and do not pay upstream delay.
+Search, categories, and suggestions query **Postgres on each request** (no catalog snapshot in the process). `GET /products` runs one SQL statement that filters, joins `offers`, sorts by price, and pages (max **40**). Category chips use `select distinct category` on `products.category`. Responses are still `200`; `enrichment` is `"ok"`, `"partial"`, or `"failed"` from the rows returned. **`attempts`** is `1` when rows matched (`0` when none). Non-`ok` responses include `Cache-Control: no-store`. A database error on the product query returns **500**.
+
+For local testing, **`OFFERS_UPSTREAM`** simulates offer availability: **`up`** (default, real join), **`partial`** (stable omitted ids — even product ids by default, or **`OFFERS_OMIT_IDS=2,4`**), **`down`** (names only, `enrichment: "failed"`). Restart the API after changing these; per-card **Try again** does not fill an omitted id until the env changes.
 
 The API returns at most **40** enriched hits per search (`limit` max **40**; the page fetches `limit=40` once). If more than 40 products match, only the first 40 in enriched sort order are available (see `SOLUTION.md`).
 
@@ -81,11 +83,11 @@ USE_DATABASE=1 DATABASE_URL=postgresql://… PORT=3000 pnpm start
 
 The database must already exist. Apply [`supabase/migrations/`](supabase/migrations/) (`supabase start` does this locally), then run `pnpm db:seed` once on a fresh database. Seed reads [`apps/api/data/`](apps/api/data/) and truncates `products` and `offers` before insert. Search does not read those JSON files at runtime.
 
-Set `USE_DATABASE=1` and `DATABASE_URL` on the process. `PORT` defaults to `3000`. `ENRICH_MAX_ATTEMPTS` and `ENRICH_MAX_MS` default to `3` and `2500`. `GET /health` is the process check.
+Set `USE_DATABASE=1` and `DATABASE_URL` on the process. `PORT` defaults to `3000`. Optional **`OFFERS_UPSTREAM=up|partial|down`** (default `up`). `GET /health` is the process check after startup **`ping()`**.
 
 ## API
 
-All routes are on the same origin as the page. When the simulated upstream fails wholesale, `GET /products` still returns `200` with the matching products and `enrichment: "failed"`. Partial success uses `enrichment: "partial"` (some or all rows missing price and availability). A network failure is separate from those responses.
+All routes are on the same origin as the page. With **`OFFERS_UPSTREAM=down`**, `GET /products` still returns `200` with product names and `enrichment: "failed"`. **`partial`** returns mixed prices on one page. A failed product SQL query is **500**. A browser network error is separate from those responses.
 
 ### `GET /health`
 

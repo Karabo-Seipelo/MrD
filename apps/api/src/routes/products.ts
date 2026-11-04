@@ -1,18 +1,24 @@
+import {
+  fetchOffersByIds,
+  getCatalogProductsByIds,
+  listCategories,
+  searchProducts,
+  suggestProductTitles,
+} from "@mrd/db";
 import type { Response } from "express";
 import { Router } from "express";
-import { enrichProductsWithRetry, type Enrichment } from "../enrich.js";
 import {
-  fetchOffers,
-  listCategories,
-  catalog,
-  productsByIds,
-} from "../upstream.js";
+  enrichmentStatus,
+  type Enrichment,
+  type EnrichedProduct,
+} from "../enrich.js";
 import {
-  paginate,
-  parsePagination,
-  queryProducts,
-  suggestProducts,
-} from "../search.js";
+  idsEligibleForOffers,
+  readOffersOmitIds,
+  readOffersUpstreamMode,
+} from "../offersUpstream.js";
+import { mergeOffersIntoProducts } from "../mergeOffersIntoProducts.js";
+import { parsePagination } from "../search.js";
 
 export type { EnrichedProduct, Enrichment } from "../enrich.js";
 export { isEnriched, enrichmentStatus } from "../enrich.js";
@@ -38,51 +44,61 @@ productsRouter.get("/products", async (req, res) => {
   const category = String(req.query.category ?? "");
   const sort = String(req.query.sort ?? "asc");
   const { page, limit } = parsePagination(req.query.page, req.query.limit);
-  const matches = queryProducts(catalog.products, q, category);
-  let enrichment: Enrichment = "ok";
-  let attempts = 0;
+  const offersMode = readOffersUpstreamMode();
+  const omitIds = readOffersOmitIds();
 
-  if (matches.length === 0) {
-    res.json({
-      products: [],
-      total: 0,
+  try {
+    const { products, total } = await searchProducts({
+      q,
+      category,
+      sort,
       page,
       limit,
-      query: q,
-      enrichment,
-      attempts,
+      offersMode,
+      omitIds,
     });
+
+    let enrichment: Enrichment = "ok";
+    let attempts = 0;
+
+    if (total === 0) {
+      res.json({
+        products: [],
+        total: 0,
+        page,
+        limit,
+        query: q,
+        enrichment,
+        attempts,
+      });
+    } else {
+      enrichment =
+        offersMode === "down" ? "failed" : enrichmentStatus(products);
+      attempts = 1;
+      setProductsCacheControl(res, enrichment);
+
+      res.json({
+        products,
+        total,
+        page,
+        limit,
+        query: q,
+        enrichment,
+        attempts,
+      });
+    }
+
     const ms = Math.round(performance.now() - started);
     console.log(
       `search #${request} 200 ${ms}ms enrichment=${enrichment} attempts=${attempts} q=${JSON.stringify(q)}`,
     );
-    return;
+  } catch (error) {
+    const ms = Math.round(performance.now() - started);
+    console.log(`search #${request} 500 ${ms}ms q=${JSON.stringify(q)}`);
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "search failed",
+    });
   }
-
-  const enriched = await enrichProductsWithRetry(matches, sort, fetchOffers);
-  const { products } = enriched;
-  enrichment = enriched.enrichment;
-  attempts = enriched.attempts;
-
-  setProductsCacheControl(res, enrichment);
-
-  const total = products.length;
-  const pageProducts = paginate(products, page, limit);
-
-  res.json({
-    products: pageProducts,
-    total,
-    page,
-    limit,
-    query: q,
-    enrichment,
-    attempts,
-  });
-
-  const ms = Math.round(performance.now() - started);
-  console.log(
-    `search #${request} 200 ${ms}ms enrichment=${enrichment} attempts=${attempts} q=${JSON.stringify(q)}`,
-  );
 });
 
 function parseOfferIds(raw: unknown): number[] {
@@ -100,37 +116,66 @@ function parseOfferIds(raw: unknown): number[] {
 
 productsRouter.get("/offers", async (req, res) => {
   const ids = parseOfferIds(req.query.ids);
-  const sort = String(req.query.sort ?? "asc");
+  const offersMode = readOffersUpstreamMode();
+  const omitIds = readOffersOmitIds();
 
   if (ids.length === 0) {
     res.status(400).json({ error: "ids query parameter is required" });
     return;
   }
 
-  const matches = productsByIds(ids);
-  if (matches.length === 0) {
-    res.json({ products: [], enrichment: "ok" as Enrichment, attempts: 0 });
-    return;
+  try {
+    const products = await getCatalogProductsByIds(ids);
+    if (products.length === 0) {
+      res.json({ products: [], enrichment: "ok" as Enrichment, attempts: 0 });
+      return;
+    }
+
+    const eligible = idsEligibleForOffers(
+      products.map((product) => product.id),
+      offersMode,
+      omitIds,
+    );
+    const offers = eligible.length > 0 ? await fetchOffersByIds(eligible) : [];
+    const merged = mergeOffersIntoProducts(products, offers);
+    const enrichment =
+      offersMode === "down" ? "failed" : enrichmentStatus(merged);
+
+    setProductsCacheControl(res, enrichment);
+
+    res.json({
+      products: merged,
+      enrichment,
+      attempts: 1,
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "offers failed",
+    });
   }
-
-  const enriched = await enrichProductsWithRetry(matches, sort, fetchOffers);
-  setProductsCacheControl(res, enriched.enrichment);
-
-  res.json({
-    products: enriched.products,
-    enrichment: enriched.enrichment,
-    attempts: enriched.attempts,
-  });
 });
 
 productsRouter.get("/products/categories", async (_req, res) => {
-  const categories = await listCategories();
-  res.json({ categories });
+  try {
+    const categories = await listCategories();
+    res.json({ categories });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "categories failed",
+    });
+  }
 });
 
 productsRouter.get("/products/suggest", async (req, res) => {
   const q = String(req.query.q ?? "");
   const limit = Math.min(Number(req.query.limit) || 8, 20);
-  const suggestions = suggestProducts(catalog.products, q, limit);
-  res.json({ suggestions });
+
+  try {
+    const suggestions = await suggestProductTitles(q, limit);
+    res.json({ suggestions });
+  } catch (error) {
+    res.status(500).json({
+      error: error instanceof Error ? error.message : "suggest failed",
+    });
+  }
 });

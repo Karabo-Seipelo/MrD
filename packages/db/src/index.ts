@@ -8,3 +8,10 @@ export {
   listCategories,
   ping,
 } from "./queries.js";
+export type {
+  EnrichedCatalogRow,
+  OffersUpstreamMode,
+  SearchProductsParams,
+  SearchProductsResult,
+} from "./searchQueries.js";
+export { searchProducts, suggestProductTitles } from "./searchQueries.js";

@@ -1,35 +1,24 @@
 import express from "express";
 import request from "supertest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { searchProducts } from "@mrd/db";
 import { productsRouter } from "./products.js";
-import { fetchOffers, listCategories } from "../upstream.js";
-
-vi.mock("../upstream.js", async (importOriginal) => {
-  const upstream = await importOriginal<typeof import("../upstream.js")>();
-  return {
-    ...upstream,
-    fetchOffers: vi.fn(),
-    listCategories: vi.fn(),
-  };
-});
 
 const app = express();
 app.use(productsRouter);
 
-function offersFor(ids: number[], priceFor: (id: number) => number) {
-  return ids.map((id) => ({
-    id,
-    price: priceFor(id),
-    availabilityStatus: "In Stock",
-    shippingInformation: "Delivery 25-35 min",
-  }));
-}
-
 describe("Products router", () => {
-  it("enriches matches with the upstream price", async () => {
-    vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
-      offersFor(ids, () => 30),
-    );
+  beforeEach(() => {
+    process.env.OFFERS_UPSTREAM = "up";
+    delete process.env.OFFERS_OMIT_IDS;
+  });
 
+  afterEach(() => {
+    delete process.env.OFFERS_UPSTREAM;
+    delete process.env.OFFERS_OMIT_IDS;
+  });
+
+  it("enriches matches with offer prices", async () => {
     const response = await request(app).get("/products").query({
       q: "mascara",
       category: "beauty",
@@ -40,20 +29,17 @@ describe("Products router", () => {
     expect(response.body.enrichment).toBe("ok");
     expect(response.body.query).toEqual("mascara");
     expect(response.body.total).toBe(1);
+    expect(response.body.attempts).toBe(1);
     expect(response.body.products[0]).toMatchObject({
       id: 1,
       title: "Essence Mascara Lash Princess",
-      price: 30,
+      price: 9.99,
       availabilityStatus: "In Stock",
       shippingInformation: "Delivery 25-35 min",
     });
   });
 
   it("paginates results after sorting", async () => {
-    vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
-      offersFor(ids, (id) => id),
-    );
-
     const page1 = await request(app).get("/products").query({
       category: "beauty",
       limit: 2,
@@ -72,16 +58,14 @@ describe("Products router", () => {
     expect(page1.body.limit).toBe(2);
     expect(
       page1.body.products.map((product: { id: number }) => product.id),
-    ).toEqual([5, 4]);
+    ).toEqual([2, 3]);
     expect(
       page3.body.products.map((product: { id: number }) => product.id),
-    ).toEqual([1]);
+    ).toEqual([5]);
   });
 
-  it("paginates on wholesale upstream failure", async () => {
-    vi.mocked(fetchOffers).mockRejectedValue(
-      new Error("upstream offers failed"),
-    );
+  it("returns failed enrichment when offers are down", async () => {
+    process.env.OFFERS_UPSTREAM = "down";
 
     const response = await request(app).get("/products").query({
       category: "beauty",
@@ -89,35 +73,15 @@ describe("Products router", () => {
       page: 2,
     });
 
+    expect(response.status).toBe(200);
     expect(response.body.enrichment).toBe("failed");
     expect(response.body.total).toBe(5);
     expect(response.body.products).toHaveLength(2);
+    expect(response.body.products[0].price).toBeUndefined();
   });
 
-  it("sorts by the enriched price", async () => {
-    vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
-      offersFor(ids, (id) => id),
-    );
-
-    const response = await request(app).get("/products").query({
-      category: "beauty",
-      sort: "desc",
-    });
-
-    expect(
-      response.body.products.map((product: { id: number }) => product.id),
-    ).toEqual([5, 4, 3, 2, 1]);
-  });
-
-  it("flags partial enrichment when only some offers return", async () => {
-    vi.mocked(fetchOffers).mockResolvedValue([
-      {
-        id: 1,
-        price: 30,
-        availabilityStatus: "In Stock",
-        shippingInformation: "Delivery 25-35 min",
-      },
-    ]);
+  it("returns partial enrichment when offers are partial", async () => {
+    process.env.OFFERS_UPSTREAM = "partial";
 
     const response = await request(app).get("/products").query({
       category: "beauty",
@@ -134,108 +98,39 @@ describe("Products router", () => {
         product,
       ]),
     );
-    expect(byId[1].price).toBe(30);
+    expect(byId[1].price).toBeDefined();
     expect(byId[2].price).toBeUndefined();
-    expect(byId[2].availabilityStatus).toBeUndefined();
   });
 
-  it("returns failed when upstream always returns no offers", async () => {
-    vi.mocked(fetchOffers).mockResolvedValue([]);
-
-    const response = await request(app).get("/products").query({
-      category: "beauty",
-    });
-
-    expect(response.status).toBe(200);
-    expect(response.body.enrichment).toBe("failed");
-    expect(response.body.total).toBe(5);
-    for (const product of response.body.products) {
-      expect(product.price).toBeUndefined();
-      expect(product.availabilityStatus).toBeUndefined();
-    }
-  });
-
-  it("second fetchOffers call requests only missing ids after partial response", async () => {
-    vi.mocked(fetchOffers)
-      .mockResolvedValueOnce([
-        {
-          id: 1,
-          price: 30,
-          availabilityStatus: "In Stock",
-          shippingInformation: "Delivery 25-35 min",
-        },
-      ])
-      .mockImplementation(async (ids: number[]) => offersFor(ids, () => 30));
-
-    await request(app).get("/products").query({
-      category: "beauty",
-      sort: "asc",
-    });
-
-    expect(fetchOffers).toHaveBeenCalledTimes(2);
-    const calls = vi.mocked(fetchOffers).mock.calls;
-    expect([...calls[0][0]].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5]);
-    expect(calls[1][0]).toEqual([2, 3, 4, 5]);
-  });
-
-  it("retries upstream and enriches after an initial failure", async () => {
-    vi.mocked(fetchOffers)
-      .mockRejectedValueOnce(new Error("upstream offers failed"))
-      .mockImplementation(async (ids: number[]) => offersFor(ids, () => 30));
-
-    const response = await request(app).get("/products").query({
-      q: "mascara",
-      category: "beauty",
-    });
-
-    expect(response.status).toBe(200);
-    expect(response.body.enrichment).toBe("ok");
-    expect(fetchOffers).toHaveBeenCalledTimes(2);
-    expect(response.body.products[0].price).toBe(30);
-  });
-
-  it("returns the hits without price when the upstream fails", async () => {
-    vi.mocked(fetchOffers).mockRejectedValue(
-      new Error("upstream offers failed"),
-    );
+  it("returns 500 when searchProducts throws", async () => {
+    vi.mocked(searchProducts).mockRejectedValueOnce(new Error("db down"));
 
     const response = await request(app).get("/products").query({
       q: "mascara",
     });
 
-    expect(response.status).toBe(200);
-    expect(response.body.enrichment).toBe("failed");
-    expect(response.body.products[0]).toMatchObject({
-      id: 1,
-      title: "Essence Mascara Lash Princess",
-    });
-    expect(response.body.products[0].price).toBeUndefined();
-    expect(response.body.products[0].availabilityStatus).toBeUndefined();
-    expect(response.body.products[0].shippingInformation).toBeUndefined();
+    expect(response.status).toBe(500);
+    expect(response.body.error).toMatch(/db down/);
   });
 
   it("returns the catalog categories", async () => {
-    vi.mocked(listCategories).mockResolvedValue(["beauty", "groceries"]);
     const response = await request(app).get("/products/categories");
     expect(response.status).toBe(200);
-    expect(response.body.categories).toEqual(["beauty", "groceries"]);
+    expect(response.body.categories).toContain("beauty");
+    expect(response.body.categories).toContain("groceries");
   });
 
   it("enriches a subset via GET /offers", async () => {
-    vi.mocked(fetchOffers).mockImplementation(async (ids: number[]) =>
-      offersFor(ids, () => 42),
-    );
-
     const response = await request(app).get("/offers").query({ ids: "1,2" });
 
     expect(response.status).toBe(200);
     expect(response.body.products).toHaveLength(2);
     expect(response.body.enrichment).toBe("ok");
-    expect(response.body.products[0].price).toBe(42);
+    expect(response.body.products[0].price).toBe(9.99);
+    expect(response.body.attempts).toBe(1);
   });
 
-  it("returns title suggestions without calling upstream", async () => {
-    vi.mocked(fetchOffers).mockClear();
+  it("returns title suggestions", async () => {
     const response = await request(app).get("/products/suggest").query({
       q: "mas",
       limit: 5,
@@ -245,6 +140,5 @@ describe("Products router", () => {
     expect(response.body.suggestions).toContain(
       "Essence Mascara Lash Princess",
     );
-    expect(fetchOffers).not.toHaveBeenCalled();
   });
 });

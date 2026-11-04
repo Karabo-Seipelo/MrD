@@ -1,5 +1,11 @@
 import { sortByPrice, type Product } from "./search.js";
-import type { Offer } from "./upstream.js";
+
+export type Offer = {
+  id: number;
+  price: number;
+  availabilityStatus: string;
+  shippingInformation: string;
+};
 
 export type EnrichedProduct = Product & {
   price?: number;

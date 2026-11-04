@@ -1,6 +1,6 @@
 import { enrichProductsWithRetry, type EnrichedProduct } from "./enrich.js";
 import type { Product } from "./search.js";
-import type { Offer } from "./upstream.js";
+import type { Offer } from "./enrich.js";
 
 const matches: Product[] = [
   {
