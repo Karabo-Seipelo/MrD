@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.local/schemas/products-response.json",
+  "title": "ProductsSearchResponse",
+  "type": "object",
+  "required": [
+    "products",
+    "total",
+    "page",
+    "limit",
+    "query",
+    "enrichment",
+    "attempts"
+  ],
+  "properties": {
+    "products": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/enrichedProduct" }
+    },
+    "total": { "type": "integer", "minimum": 0 },
+    "page": { "type": "integer", "minimum": 1 },
+    "limit": { "type": "integer", "minimum": 1, "maximum": 40 },
+    "query": { "type": "string" },
+    "enrichment": {
+      "type": "string",
+      "enum": ["ok", "partial", "failed"]
+    },
+    "attempts": { "type": "integer", "minimum": 0 }
+  },
+  "$defs": {
+    "product": {
+      "type": "object",
+      "required": ["id", "title", "description", "category"],
+      "properties": {
+        "id": { "type": "integer" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "brand": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "enrichedProduct": {
+      "allOf": [
+        { "$ref": "#/$defs/product" },
+        {
+          "type": "object",
+          "properties": {
+            "price": { "type": "number" },
+            "availabilityStatus": { "type": "string" },
+            "shippingInformation": { "type": "string" }
+          }
+        }
+      ]
+    }
+  }
+}

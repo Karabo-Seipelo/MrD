@@ -14,6 +14,10 @@ GET {{hostname}}/products?category=beauty
 
 GET {{hostname}}/products?sort=desc
 
+### Paginate (page 2, two per page)
+
+GET {{hostname}}/products?category=beauty&page=2&limit=2
+
 ### Get suggestions for a product
 
 GET http://localhost:3000/products/suggest?q=mas&limit=8

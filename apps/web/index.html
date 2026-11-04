@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <title>Product Search</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Product Search" />
+    <meta name="keywords" content="Product Search" />
+    <link rel="stylesheet" href="./styles.css?v8" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header__inner">
+        <div class="site-header__bar">
+          <a class="brand" href="/" aria-label="ACME home">
+            <span class="brand__mark">🚀</span>
+            <span class="brand__name">ACME</span>
+          </a>
+        </div>
+        <h1 class="page-title">Product Search</h1>
+        <form class="search" role="search">
+          <div class="search__query">
+            <label class="search__label" for="q">Search the catalogue</label>
+            <div class="search__row">
+              <div class="search__field">
+                <input
+                  id="q"
+                  name="q"
+                  class="search__input"
+                  type="search"
+                  placeholder="Try 'apple' or 'ice cream'"
+                  autocomplete="off"
+                  aria-autocomplete="list"
+                  aria-controls="suggest-list"
+                  aria-expanded="false"
+                />
+                <ul
+                  id="suggest-list"
+                  class="suggest"
+                  role="listbox"
+                  hidden
+                ></ul>
+                <template id="suggest-item">
+                  <li class="suggest__item" role="option"></li>
+                </template>
+              </div>
+              <button
+                class="button button--primary search__submit"
+                aria-label="Search"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="search__tools">
+            <div class="search__refine">
+              <fieldset class="chips">
+                <legend class="u-sr">Category</legend>
+                <div class="chips__track">
+                  <button type="button" class="chips__clear button--clear">
+                    Clear
+                  </button>
+                </div>
+                <template id="chip">
+                  <label class="chip">
+                    <input class="chip__input" type="radio" name="category" />
+                    <span class="chip__label"></span>
+                  </label>
+                </template>
+              </fieldset>
+            </div>
+            <div class="sort">
+              <label class="sort__label" for="sort">Sort</label>
+              <div class="sort__control">
+                <select class="sort__select" id="sort" name="sort">
+                  <option value="asc">Price: low to high</option>
+                  <option value="desc">Price: high to low</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </header>
+
+    <main class="results">
+      <div class="results__toolbar">
+        <p class="results__summary" aria-live="polite"></p>
+        <nav class="pager" aria-label="Results pages" hidden>
+          <p class="pager__range"></p>
+          <div class="pager__actions">
+            <button type="button" class="button button--secondary pager__prev">
+              Previous
+            </button>
+            <button type="button" class="button button--secondary pager__next">
+              Next
+            </button>
+          </div>
+        </nav>
+      </div>
+
+      <template id="enrichment-banner">
+        <section class="enrichment-banner" role="status" aria-live="polite">
+          <p class="enrichment-banner__text"></p>
+          <button
+            type="button"
+            class="button button--secondary enrichment-banner__retry"
+          >
+            Try search again
+          </button>
+        </section>
+      </template>
+
+      <template id="search-empty">
+        <p class="search-empty" role="status">
+          No products match your search. Try different words or clear a category
+          filter.
+        </p>
+      </template>
+
+      <template id="search-error">
+        <section class="search-error" aria-labelledby="search-error-title">
+          <h2 class="search-error__title" id="search-error-title">
+            Search isn't working right now
+          </h2>
+          <p class="search-error__body">
+            Your search and filters are saved. Try again in a moment.
+          </p>
+          <div class="search-error__actions">
+            <button class="button button--primary" type="button">
+              Try again
+            </button>
+          </div>
+        </section>
+      </template>
+
+      <template id="result">
+        <li class="result-list__item">
+          <p class="result__category">Category</p>
+          <h2 class="result__name">Product Name</h2>
+          <span class="price" data-price>R89.00</span>
+          <div class="result__offer" hidden>
+            <span class="price price--missing">Price unavailable</span>
+            <button
+              class="button button--secondary result__retry"
+              type="button"
+              data-product-id=""
+            >
+              Try again
+            </button>
+          </div>
+          <div class="result__meta">
+            <div class="result__vendor">Vendor Name</div>
+            <div class="result__eta">
+              <svg
+                class="result__eta-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              <span class="result__eta-text">25 - 35 min</span>
+            </div>
+          </div>
+          <span class="badge"></span>
+        </li>
+      </template>
+
+      <template id="skeleton">
+        <li class="result-list__item" aria-hidden="true">
+          <div class="skeleton skeleton__category"></div>
+          <div class="skeleton skeleton__name"></div>
+          <span class="skeleton skeleton__price"></span>
+          <div class="result__meta">
+            <div class="skeleton skeleton__vendor"></div>
+            <div class="skeleton skeleton__eta"></div>
+          </div>
+          <span class="skeleton skeleton__badge"></span>
+        </li>
+      </template>
+
+      <div class="results__status"></div>
+
+      <ul class="result-list"></ul>
+    </main>
+
+    <script type="module" src="./dist/main.js"></script>
+  </body>
+</html>
