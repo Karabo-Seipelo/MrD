@@ -83,6 +83,14 @@ USE_DATABASE=1 DATABASE_URL=postgresql://… PORT=3000 pnpm start
 
 The database must already exist. Apply [`supabase/migrations/`](supabase/migrations/) (`supabase start` does this locally), then run `pnpm db:seed` once on a fresh database. Seed reads [`apps/api/data/`](apps/api/data/) and truncates `products` and `offers` before insert. Search does not read those JSON files at runtime.
 
+### Seed data layout and migration
+
+Pricing lives in **`offers.json`**, not in `catalog.json`. Each product row in `catalog.json` holds catalog fields only (`title`, `description`, `category`, optional `brand`/`tags`, and the rest in `payload` after seed). Matching rows in `offers.json` use the same numeric `id` as `product_id` in Postgres (`price`, `availabilityStatus`, `shippingInformation`).
+
+If you already seeded from an older layout that embedded those three fields on each product object, **re-run `pnpm db:seed`** after pulling the split JSON files. The seed script truncates and reloads both tables, so local/dev data is replaced; there is no separate SQL migration for offer columns because they were always in the `offers` table ([`supabase/migrations/`](supabase/migrations/)).
+
+For backward compatibility, the seed script still accepts legacy `catalog.json` entries that include inline `price`, `availabilityStatus`, and `shippingInformation`. Those values are inserted into `offers` and stripped from `products.payload`. When both legacy catalog fields and `offers.json` define the same id, **`offers.json` wins**.
+
 Set `USE_DATABASE=1` and `DATABASE_URL` on the process. `PORT` defaults to `3000`. Optional **`OFFERS_UPSTREAM=up|partial|down`** (default `up`). `GET /health` is the process check after startup **`ping()`**.
 
 ## API

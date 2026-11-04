@@ -35,11 +35,13 @@ describe("createUrlState", () => {
     window.history.replaceState({}, "", "/");
   });
 
-  it("buildFetchParams includes q, category, and limit", () => {
-    const { url } = setupDom();
+  it("buildFetchParams includes q, category, and limit but not sort", () => {
+    const { url, sort } = setupDom();
+    sort.value = "desc";
     const params = url.buildFetchParams();
     expect(params.get("q")).toBe("cream");
     expect(params.get("category")).toBe("beauty");
+    expect(params.get("sort")).toBeNull();
     expect(params.get("limit")).toBe("40");
   });
 

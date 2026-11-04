@@ -16,6 +16,8 @@ import {
   idsEligibleForOffers,
   readOffersOmitIds,
   readOffersUpstreamMode,
+  resolveOffersRouteAttempts,
+  resolveOffersRouteEnrichment,
 } from "../offersUpstream.js";
 import { mergeOffersIntoProducts } from "../mergeOffersIntoProducts.js";
 import { parsePagination } from "../search.js";
@@ -31,6 +33,25 @@ function setProductsCacheControl(res: Response, enrichment: Enrichment) {
   if (enrichment !== "ok") {
     res.set("Cache-Control", "no-store");
   }
+}
+
+/** Search uses one SQL round trip when there are matches (no enrichProductsWithRetry). */
+function searchEnrichmentAttempts(total: number): number {
+  return total > 0 ? 1 : 0;
+}
+
+type OffersResponseBody = {
+  products: EnrichedProduct[];
+  enrichment: Enrichment;
+  attempts: number;
+};
+
+function buildOffersResponse(
+  products: EnrichedProduct[],
+  enrichment: Enrichment,
+  attempts: number,
+): OffersResponseBody {
+  return { products, enrichment, attempts };
 }
 
 productsRouter.get("/health", (_req, res) => {
@@ -74,7 +95,7 @@ productsRouter.get("/products", async (req, res) => {
     } else {
       enrichment =
         offersMode === "down" ? "failed" : enrichmentStatus(products);
-      attempts = 1;
+      attempts = searchEnrichmentAttempts(total);
       setProductsCacheControl(res, enrichment);
 
       res.json({
@@ -127,7 +148,7 @@ productsRouter.get("/offers", async (req, res) => {
   try {
     const products = await getCatalogProductsByIds(ids);
     if (products.length === 0) {
-      res.json({ products: [], enrichment: "ok" as Enrichment, attempts: 0 });
+      res.json(buildOffersResponse([], "ok", 0));
       return;
     }
 
@@ -138,16 +159,20 @@ productsRouter.get("/offers", async (req, res) => {
     );
     const offers = eligible.length > 0 ? await fetchOffersByIds(eligible) : [];
     const merged = mergeOffersIntoProducts(products, offers);
-    const enrichment =
-      offersMode === "down" ? "failed" : enrichmentStatus(merged);
+    const enrichment = resolveOffersRouteEnrichment(
+      offersMode,
+      merged,
+      eligible.length,
+    );
+    const attempts = resolveOffersRouteAttempts(
+      offersMode,
+      products.length,
+      eligible.length,
+    );
 
     setProductsCacheControl(res, enrichment);
 
-    res.json({
-      products: merged,
-      enrichment,
-      attempts: 1,
-    });
+    res.json(buildOffersResponse(merged, enrichment, attempts));
   } catch (error) {
     res.status(500).json({
       error: error instanceof Error ? error.message : "offers failed",

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { vi } from "vitest";
 import {
   paginate,
@@ -10,9 +11,9 @@ import {
 
 process.env.USE_DATABASE = "1";
 
-const dataDir = join(process.cwd(), "data");
+const dataDir = path.join(path.dirname(fileURLToPath(import.meta.url)), "data");
 const catalog = JSON.parse(
-  readFileSync(join(dataDir, "catalog.json"), "utf-8"),
+  readFileSync(path.join(dataDir, "catalog.json"), "utf-8"),
 ) as {
   products: Array<{
     id: number;
@@ -24,7 +25,7 @@ const catalog = JSON.parse(
   }>;
 };
 const offersFile = JSON.parse(
-  readFileSync(join(dataDir, "offers.json"), "utf-8"),
+  readFileSync(path.join(dataDir, "offers.json"), "utf-8"),
 ) as {
   offers: Array<{
     id: number;

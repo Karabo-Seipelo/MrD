@@ -2,12 +2,17 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { getPool, closePool } from "../src/index.js";
+import {
+  buildProductSeedRows,
+  mergeOfferSeedRows,
+  type CatalogProductInput,
+} from "../src/seedData.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const dataDir = path.join(__dirname, "../../../apps/api/data");
 
 type CatalogFile = {
-  products: Array<Record<string, unknown> & { id: number }>;
+  products: CatalogProductInput[];
 };
 
 type OffersFile = {
@@ -36,30 +41,31 @@ try {
     "truncate public.offers, public.products restart identity cascade",
   );
 
-  for (const product of catalog.products) {
-    const { id, title, description, category, brand, tags, ...rest } = product;
+  const productRows = buildProductSeedRows(catalog.products);
+  const offerRows = mergeOfferSeedRows(offersFile.offers, catalog.products);
 
+  for (const product of productRows) {
     await client.query(
       `insert into public.products (id, title, description, category, brand, tags, payload)
        values ($1, $2, $3, $4, $5, $6, $7)`,
       [
-        id,
-        title,
-        description,
-        category,
-        brand ?? null,
-        Array.isArray(tags) ? tags : [],
-        JSON.stringify(rest),
+        product.id,
+        product.title,
+        product.description,
+        product.category,
+        product.brand,
+        product.tags,
+        JSON.stringify(product.payload),
       ],
     );
   }
 
-  for (const offer of offersFile.offers) {
+  for (const offer of offerRows) {
     await client.query(
       `insert into public.offers (product_id, price, availability_status, shipping_information)
        values ($1, $2, $3, $4)`,
       [
-        offer.id,
+        offer.productId,
         offer.price,
         offer.availabilityStatus,
         offer.shippingInformation,
@@ -69,7 +75,7 @@ try {
 
   await client.query("commit");
   console.log(
-    `seeded ${catalog.products.length} products and ${offersFile.offers.length} offers`,
+    `seeded ${productRows.length} products and ${offerRows.length} offers`,
   );
 } catch (error) {
   await client.query("rollback");

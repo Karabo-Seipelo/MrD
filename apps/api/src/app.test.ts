@@ -1,5 +1,14 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import request from "supertest";
-import { app } from "./app.js";
+import { app, webStaticRoot } from "./app.js";
+
+describe("static root", () => {
+  it("points at apps/web (not repo-root web/)", () => {
+    expect(webStaticRoot.endsWith(`${path.sep}apps${path.sep}web`)).toBe(true);
+    expect(existsSync(path.join(webStaticRoot, "index.html"))).toBe(true);
+  });
+});
 
 describe("GET /health", () => {
   it("returns ok", async () => {

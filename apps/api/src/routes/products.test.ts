@@ -130,6 +130,35 @@ describe("Products router", () => {
     expect(response.body.attempts).toBe(1);
   });
 
+  it("returns attempts 0 for GET /offers when ids match no products", async () => {
+    const response = await request(app).get("/offers").query({ ids: "99999" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.products).toEqual([]);
+    expect(response.body.attempts).toBe(0);
+  });
+
+  it("returns attempts 0 for GET /offers when offers upstream is down", async () => {
+    process.env.OFFERS_UPSTREAM = "down";
+
+    const response = await request(app).get("/offers").query({ ids: "1" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.enrichment).toBe("failed");
+    expect(response.body.attempts).toBe(0);
+  });
+
+  it("returns partial for GET /offers when partial mode omits all requested ids", async () => {
+    process.env.OFFERS_UPSTREAM = "partial";
+
+    const response = await request(app).get("/offers").query({ ids: "2" });
+
+    expect(response.status).toBe(200);
+    expect(response.body.enrichment).toBe("partial");
+    expect(response.body.attempts).toBe(1);
+    expect(response.body.products[0].price).toBeUndefined();
+  });
+
   it("returns title suggestions", async () => {
     const response = await request(app).get("/products/suggest").query({
       q: "mas",

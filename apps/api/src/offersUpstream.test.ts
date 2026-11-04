@@ -3,6 +3,8 @@ import {
   idsEligibleForOffers,
   readOffersOmitIds,
   readOffersUpstreamMode,
+  resolveOffersRouteAttempts,
+  resolveOffersRouteEnrichment,
 } from "./offersUpstream.js";
 
 describe("offersUpstream", () => {
@@ -26,5 +28,19 @@ describe("offersUpstream", () => {
 
   it("returns no ids when down", () => {
     expect(idsEligibleForOffers([1, 2], "down", null)).toEqual([]);
+  });
+
+  it("returns partial when partial mode omits every requested id", () => {
+    expect(
+      resolveOffersRouteEnrichment(
+        "partial",
+        [{ id: 2, title: "x", description: "d", category: "beauty" }],
+        0,
+      ),
+    ).toBe("partial");
+  });
+
+  it("counts one attempt in partial mode even when all ids are omitted", () => {
+    expect(resolveOffersRouteAttempts("partial", 2, 0)).toBe(1);
   });
 });

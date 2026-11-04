@@ -31,6 +31,11 @@ function parseSort(raw: string | null): "asc" | "desc" {
   return raw === "desc" ? "desc" : "asc";
 }
 
+/** Page 1 is omitted from the canonical query string (see serializeSearchParams). */
+function pageQueryToken(page: number): string {
+  return page > 1 ? String(page) : "";
+}
+
 function parseCategory(
   raw: string | null,
   knownCategories?: ReadonlySet<string>,
@@ -65,17 +70,21 @@ export function parseSearchParams(
 
   const normalized: SearchParams = { q, category, sort, page };
 
-  const rawQ = (params.get("q") ?? "").trim();
-  const rawCategory = (params.get("category") ?? "").trim().toLowerCase();
+  const rawQParam = params.get("q") ?? "";
+  const rawCategoryParam = params.get("category") ?? "";
   const rawSort = params.get("sort");
   const rawPage = params.get("page");
+  const rawPageToken =
+    rawPage == null ? "" : pageQueryToken(parsePage(rawPage, options.maxPage));
+  const canonicalCategory = category ? category : "";
+  const canonicalSortToken = sort === "desc" ? "desc" : "";
 
   const changed =
     [...params.keys()].some((key) => !ALLOWED_PARAM_KEYS.has(key)) ||
-    rawQ !== q ||
-    rawCategory !== category ||
-    (rawSort ?? "") !== (sort === "desc" ? "desc" : "") ||
-    (rawPage ?? "") !== (page > 1 ? String(page) : "");
+    rawQParam !== q ||
+    rawCategoryParam !== canonicalCategory ||
+    (rawSort ?? "") !== canonicalSortToken ||
+    rawPageToken !== pageQueryToken(page);
 
   return {
     params: normalized,

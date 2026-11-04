@@ -25,10 +25,25 @@ describe("parseSearchParams", () => {
   });
 
   it("keeps valid category lowercase", () => {
-    const { params } = parseSearchParams("?category=Beauty", {
+    const { params, changed } = parseSearchParams("?category=Beauty", {
       knownCategories: known,
     });
     expect(params.category).toBe("beauty");
+    expect(changed).toBe(true);
+  });
+
+  it("flags changed when q has extra whitespace", () => {
+    const { params, changed } = parseSearchParams("?q=%20cream%20");
+    expect(params.q).toBe("cream");
+    expect(changed).toBe(true);
+  });
+
+  it("flags changed when category has extra whitespace", () => {
+    const { params, changed } = parseSearchParams("?category=%20beauty%20", {
+      knownCategories: known,
+    });
+    expect(params.category).toBe("beauty");
+    expect(changed).toBe(true);
   });
 
   it("ignores extra params in changed detection", () => {
@@ -39,6 +54,12 @@ describe("parseSearchParams", () => {
   it("clamps page when maxPage provided", () => {
     const { params } = parseSearchParams("?page=99", { maxPage: 3 });
     expect(params.page).toBe(3);
+  });
+
+  it("does not flag changed when page=1 is explicit", () => {
+    const { params, changed } = parseSearchParams("?q=cream&page=1");
+    expect(params.page).toBe(1);
+    expect(changed).toBe(false);
   });
 });
 

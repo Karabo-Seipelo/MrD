@@ -65,6 +65,8 @@ Browser session LRU unchanged. Suggest uses a separate in-memory map on the clie
 
 `products` and `offers` tables; categories are `products.category` (distinct query, no `categories` table).
 
+Seed source: [`apps/api/data/catalog.json`](apps/api/data/catalog.json) (catalog fields) and [`apps/api/data/offers.json`](apps/api/data/offers.json) (pricing). Runtime never reads those files. After changing seed JSON (including the split that moved pricing out of catalog), run **`pnpm db:seed`** to truncate and reload Postgres. Legacy catalog rows with inline pricing are still accepted at seed time; see README **Seed data layout and migration**.
+
 ## Tests
 
 API tests mock `@mrd/db`. CI does not run Postgres.
